@@ -42,6 +42,7 @@ const ModPlayer = {
                 // same creepy sound less noisy.
                 var word = view[i];
                 // PCM data is signed, unsigned data would require a conversion: ((word + 32768) % 65536 - 32768)
+                // divide signed word by 32768.0 to get the required [-1.0 ,1.0] range
                 nowBuffering[i] = word / 32768.0;
             }
         }
