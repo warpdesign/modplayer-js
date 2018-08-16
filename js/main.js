@@ -1,11 +1,25 @@
-console.log('hi there !');
+async function betterFetch(url) {
+    const response = await fetch(url);
 
-async function loadRawPCM(path) {
-    // first load raw pcm 44.100/16bit data
-    return fetch(path).then((response) => {
-        return response.arrayBuffer();
-    });
+    if (response.ok) {
+        return response;
+    } else {
+        throw(`${response.statusText} (${response.status})`);
+    }
 }
 
-const audioBuffer = await loadRawPCM('audio/yahoo.raw');
-console.log('finished!', audioBuffer);
+async function loadRawPCM(url) {
+    // first load raw pcm 44.100/16bit data
+    const response = await betterFetch(url);
+    const buffer = await response.arrayBuffer();
+
+    return buffer;
+}
+
+loadRawPCM('audio/yahoo.raw')
+.then(buffer => {
+    console.log('bufffer', buffer);
+})
+.catch(e => {
+    console.log('Error loading pcm file:', e);
+});
