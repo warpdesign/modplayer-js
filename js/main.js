@@ -27,7 +27,7 @@ const ModPlayer = {
     prepareBuffer(buffer, sampleSize = 2, sampleRate = 44100, channels = 2) {
         // sampleSize = 2 bytes for 16bit sound
         const frameCount = buffer.byteLength / sampleSize,
-            view = new Uint16Array(buffer);
+            view = new Int16Array(buffer);
 
         this.audioBuffer = audioCtx.createBuffer(channels, frameCount, sampleRate);
 
@@ -40,8 +40,8 @@ const ModPlayer = {
                 // as my pcm sample is in 16-Bit. It plays still the
                 // same creepy sound less noisy.
                 var word = view[i];
-                //(sounds[soundName].charCodeAt(i * 2) & 0xff) + ((sounds[soundName].charCodeAt(i * 2 + 1) & 0xff) << 8);
-                nowBuffering[i] = ((word + 32768) % 65536 - 32768) / 32768.0;
+                // PCM data is signed, unsigned data would require a conversion: ((word + 32768) % 65536 - 32768)
+                nowBuffering[i] = word / 32768.0;
             }
         }
         console.log('audiobuffer ready');
