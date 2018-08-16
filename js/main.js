@@ -13,18 +13,19 @@ const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 const ModPlayer = {
     async init(url) {
         const buffer = await this.loadRawPCM(url);
-        this.prepareBuffer(buffer);
+        this.prepareBuffer(buffer, {sampleRate:16000});
     },
 
     async loadRawPCM(url) {
         // first load raw pcm 44.100/16bit data
         const response = await betterFetch(url);
         const buffer = await response.arrayBuffer();
-    
+
         return buffer;
     },
 
-    prepareBuffer(buffer, sampleSize = 2, sampleRate = 44100, channels = 2) {
+    prepareBuffer(buffer, { sampleSize = 2, sampleRate = 44100, channels = 2 } = {}) {
+        debugger;
         // sampleSize = 2 bytes for 16bit sound
         const frameCount = buffer.byteLength / sampleSize,
             view = new Int16Array(buffer);
@@ -63,4 +64,4 @@ const ModPlayer = {
     }
 }
 
-ModPlayer.init('audio/yahoo.raw');
+ModPlayer.init('audio/saxo_16k.raw');
