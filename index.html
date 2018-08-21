@@ -1,10 +1,95 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <script type="text/javascript" src="js/main.js"></script>
+    <style type="text/css">
+        .player{
+            margin:auto;
+            width:1024px;
+            display:grid;
+            grid-template-columns: 70% 30%;
+            grid-template-rows: 5% 85% 10%;
+            grid-template-areas:
+                "title title"
+                "patterns samples"
+                "controls controls";
+        }
+
+        .player .info{
+            grid-area:title;
+        }
+
+        .player .patterns{
+            grid-area:patterns;
+        }
+
+        .player .samples{
+            grid-area:samples;
+        }
+
+        .player .controls{
+            grid-area:controls;
+        }
+
+        .player > div{
+            padding:20px;
+        }
+
+        .player button{
+            padding:10px;
+            border:1px solid #777;
+        }
+
+        .player select{
+            padding:5px;
+            font-size:1.1em;
+        }
+    </style>
+    <script type="text/javascript" src="js/utils.js"></script>
+    <script type="text/javascript" src="js/pt.js"></script>
+    <script type="text/javascript" src="js/modplayer.js"></script>
+    <script type="text/javascript">
+    ModPlayer.loadModule('audio/amegas.mod');
+
+    document.addEventListener('keyup', (e) => {
+        if (e.keyCode === 107) {
+            ModPlayer.sampleSpeed += 0.05;
+            console.log('new sampleSpeed', ModPlayer.sampleSpeed);
+        } else if (e.keyCode === 109) {
+            ModPlayer.sampleSpeed -= 0.05;
+            console.log('new sampleSpeed', ModPlayer.sampleSpeed);
+        }
+    });
+
+    document.addEventListener('module_loaded', () => {
+        const samples = ModPlayer.module.samples;
+        let str = '';
+        for (let i = 0; i < samples.length; ++i) {
+            str += `<option>${samples[i].name}</option>`;
+        }
+
+        document.querySelector('.sample-list').innerHTML = str;
+
+        document.querySelector('.title').innerText = ModPlayer.module.name;
+    });
+    </script>
 </head>
 <body>
-    <button onClick="ModPlayer.play()">Play</button>
-    <button onClick="ModPlayer.stop()">Stop</button>
+    <div class="player">
+        <div class="info">
+            <h4>Title: <span class="title"></span> <span class="bpm">bpm</span> <span class="speed">speed</span></h4>
+        </div>
+        <div class="patterns">
+            <h4>Patterns:</h4>
+            <ul class="pattern-list" name="pattern-list"></ul>
+        </div>
+        <div class="samples">
+            <h4>Samples:</h4>
+            <select class="sample-list" name="sample-list" multiple></select>
+        </div>
+        <div class="controls">
+            <button onClick="ModPlayer.play()">Play</button>
+            <button onClick="ModPlayer.stop()">Stop</button>
+        </div>
+    </div>
 </body>
 </html>
