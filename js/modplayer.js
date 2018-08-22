@@ -3,18 +3,19 @@ const ModPlayer = {
     mixerNode: null,
     module: null,
     buffer: null,
-    async init(url) {
-        // this.sampleData = await this.loadBinary(url);
-        // this.createContext();
-        // this.prepareBuffer(this.sampleData);
-        // this.createContext();
-        // this.prepareBuffer(buffer);
-        // this.prepareBuffer(buffer, {sampleRate:16000});
+    mixingRate: 44100,
+    playing: false,
+
+    init() {
+        this.createContext();
     },
 
     async loadModule(url) {
+        if (!this.context) {
+            this.createContext();
+        }
         const buffer = await this.loadBinary(url);
-        this.module = new PTModule(buffer);
+        this.module = new PTModule(buffer, this.mixingRate);
         this.module.decodeData();
     },
 
@@ -27,6 +28,7 @@ const ModPlayer = {
     },
 
     createContext({ bufferlen = 4096 } = {}) {
+        console.log('Creating audio context...');
         this.context = new (window.AudioContext || window.webkitAudioContext)();
 
         this.mixingRate = this.context.sampleRate;
@@ -39,6 +41,7 @@ const ModPlayer = {
 
         if (this.mixerNode) {
             this.mixerNode.onaudioprocess = (ape) => this.mix(ape);
+            this.mixerNode.connect(this.context.destination);
         }
     },
 
@@ -55,7 +58,7 @@ const ModPlayer = {
                 this.samplePos = 0;
             }
         }*/
-        if (this.module && this.module.playing) {
+        if (this.playing && this.module) {
 
         }
     },
@@ -86,8 +89,10 @@ const ModPlayer = {
     },
 
     play() {
-        console.log('playing');
-        this.mixerNode.connect(this.context.destination);
+        console.log('Playing module...');
+        if (this.module) {
+            this.playing = true;
+        }
         // if (this.audioBuffer) {
         //     // Get an AudioBufferSourceNode.
         //     // This is the AudioNode to use when we want to play an AudioBuffer
@@ -104,6 +109,7 @@ const ModPlayer = {
     },
 
     stop() {
-        this.mixerNode.disconnect(this.context.destination);
+        // this.mixerNode.disconnect(this.context.destination);
+        this.playing = false;
     }
 }
