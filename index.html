@@ -48,7 +48,7 @@
     <script type="text/javascript" src="js/pt.js"></script>
     <script type="text/javascript" src="js/modplayer.js"></script>
     <script type="text/javascript">
-    ModPlayer.loadModule('audio/amegas.mod');
+    ModPlayer.loadModule('audio/silkworm.mod');
 
     document.addEventListener('keyup', (e) => {
         if (e.keyCode === 107) {
@@ -61,6 +61,7 @@
     });
 
     document.addEventListener('module_loaded', () => {
+        console.log('module loaded');
         const samples = ModPlayer.module.samples;
         let str = '';
         for (let i = 0; i < samples.length; ++i) {

@@ -15,7 +15,7 @@ const ModPlayer = {
     async loadModule(url) {
         const buffer = await this.loadBinary(url);
         this.module = new PTModule(buffer);
-        this.module.readHeader();
+        this.module.decodeData();
     },
 
     async loadBinary(url) {
@@ -43,6 +43,7 @@ const ModPlayer = {
     },
 
     mix(audioProcessingEvent) {
+        /*
         var outputBuffer = audioProcessingEvent.outputBuffer.getChannelData(0);
 
         for (var i = 0; i < outputBuffer.length; ++i) {
@@ -53,6 +54,9 @@ const ModPlayer = {
             if (this.samplePos >= this.sampleLength - 1) {
                 this.samplePos = 0;
             }
+        }*/
+        if (this.module && this.module.playing) {
+
         }
     },
 
