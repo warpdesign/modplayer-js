@@ -1,3 +1,5 @@
+var tickReached = 0;
+
 class PTModule {
     constructor(buffer, mixingRate) {
         this.init();
@@ -18,9 +20,13 @@ class PTModule {
         this.maxSamples = 0;
         // These are the default Mod speed/bpm
         this.bpm = 125;
+        // number of ticks before playing next pattern row
         this.speed = 6;
         this.position = 0;
-        this.tickSpeed = 0;
+        // samples to handle before generating a single tick (50hz)
+        this.samplesPerTick = 0;
+        this.filledSamples = 0;
+        this.ticks = 0;
         this.buffer = null;
     }
 
@@ -50,7 +56,39 @@ class PTModule {
      * Calculates the number of samples needed
      */
     calcTickSpeed() {
-        this.tickSpeed = (this.mixingRate * 60)
+        this.samplesPerTick = ((this.mixingRate * 60) / this.bpm) / 24;
+    }
+
+    /**
+     * ProTracker audio mixer
+     *
+     * @param {Float32Array} buffer Output buffer that should be filled with PCM data
+     *
+     * This method is called each time the buffer should be filled with data
+     */
+    mix(buffer) {
+        for (let i = 0; i < buffer.length; ++i) {
+            // playing speed test
+            this.tick();
+            this.filledSamples++;
+        }
+    }
+
+    /**
+     * Called for each sample inside the output audio buffer
+     * This calculates both when to goto next pattern row
+     * and sound playback rate
+     */
+    tick() {
+        if (this.filledSamples > this.samplesPerTick) {
+            this.ticks++;
+            this.filledSamples = 0;
+            if (this.ticks >= this.speed) {
+                console.log('**tick !', tickReached++);
+                // TO DO: goto next row
+                this.ticks = 0;
+            }
+        }
     }
 
     getInstruments() {

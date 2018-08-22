@@ -58,34 +58,10 @@ const ModPlayer = {
                 this.samplePos = 0;
             }
         }*/
+
         if (this.playing && this.module) {
-
+            this.module.mix(audioProcessingEvent.outputBuffer.getChannelData(0));
         }
-    },
-
-    prepareBuffer(buffer, { sampleSize = 2, sampleRate = 44100, channels = 1 } = {}) {
-        // sampleSize = 2 bytes for 16bit sound
-        this.sampleLength = buffer.byteLength / sampleSize;
-
-        const view = new Int16Array(buffer);
-
-        // this.audioBuffer = audioCtx.createBuffer(channels, frameCount, sampleRate);
-
-        this.buffer = new Float32Array(this.sampleLength);
-        //this.audioBuffer.getChannelData(channel);
-        for (var i = 0; i < this.sampleLength; i++) {
-            // audio needs to be in [-1.0; 1.0]
-            var word = view[i];
-            // PCM data is signed, unsigned data would require a conversion: ((word + 32768) % 65536 - 32768)
-            this.buffer[i] = word / 32768.0;
-        }
-
-        this.samplePos = 0;
-        this.sampleSpeed = sampleRate / this.mixingRate;
-
-        console.log('audiobuffer ready');
-        console.log('mixingRate', this.mixingRate);
-        console.log('sampleSpeed=', this.sampleSpeed)
     },
 
     play() {
@@ -109,7 +85,7 @@ const ModPlayer = {
     },
 
     stop() {
-        // this.mixerNode.disconnect(this.context.destination);
+        console.log('Stoping module...');
         this.playing = false;
     }
 }
