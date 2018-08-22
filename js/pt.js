@@ -16,18 +16,21 @@ class PTModule {
         this.patterns = [];
         this.positions = [];
         this.songLength = 0;
-        this.channels = [];
+        this.channels = new Array(4);
         this.maxSamples = 0;
         // These are the default Mod speed/bpm
         this.bpm = 125;
         // number of ticks before playing next pattern row
         this.speed = 6;
         this.position = 0;
+        this.pattern = 0;
+        this.row = 0;
         // samples to handle before generating a single tick (50hz)
         this.samplesPerTick = 0;
         this.filledSamples = 0;
         this.ticks = 0;
         this.buffer = null;
+        this.started = false;
     }
 
     decodeData() {
@@ -38,6 +41,7 @@ class PTModule {
         this.getPatternData();
         this.getSampleData();
         this.calcTickSpeed();
+        this.decodeRow();
 
         document.dispatchEvent(new Event('module_loaded'));
     }
@@ -89,6 +93,46 @@ class PTModule {
                 this.ticks = 0;
             }
         }
+    }
+
+    decodeRow() {
+        if (!this.started) {
+            this.started = true;
+            this.pattern = this.positions[0];
+        }
+        const pattern = this.patterns[this.pattern];
+
+        const data = new Uint8Array(pattern, this.row * 16, 16);
+
+        for (let i = 0; i < this.channels.length; ++i) {
+            const offset = i * 4;
+            // depends on command: maybe we don't touch anything
+            const note = {
+                sample: (data[0 + offset] & 0xF0 | data[2 + offset] >> 4) - 1,
+                period: (data[0 + offset] & 0x0F0) << 8 | data[1 + offset],
+                // case 856: notename = "C-1"; break;
+                // case 808: notename = "C#1"; break;
+                // case 762: notename = "D-1"; break;
+                // case 856: notename = "D#1"; break;
+                // /* etc */
+                // default: notename = "???"; /* This should NOT occur; if it do, it is */
+                // /* not a ProTracker module! */
+                effect: data[2 + offset] & 0xF,
+                effectData: data[3 + offset],
+                samplePos: 0
+            };
+            this.channels[i] = note;
+            // effectcommand =* (notedata + 2) & 0xF;
+            // effectdata =* (notedata + 3);
+            // if effectcommand == 0xE then /* Extended command */ {
+            //     extendedcommand = effectdata >> 4;
+            //     effectdata &= 0xf; /* Only one nibble data for extended command */
+            // }
+        }
+    }
+
+    executeEffect(cmd, data, channel) {
+        Effects[cmd](data, channel);
     }
 
     getInstruments() {
@@ -166,5 +210,11 @@ class PTModule {
 
             offset += length;
         }
+    }
+}
+
+const Effects = {
+    0xF(Module, data) {
+        Module.speed = data;
     }
 }
