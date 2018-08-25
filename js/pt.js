@@ -44,6 +44,7 @@ class PTModule {
         this.ticks = 0;
         this.filledSamples = 0;
         this.speed = 6;
+        this.newRow = false;
         this.decodeRow();
     }
 
@@ -93,12 +94,16 @@ class PTModule {
             this.tick();
             for (let chan = 0; chan < 1; ++chan) {
                 const channel = this.channels[chan];
-                if (!this.ticks && channel.cmd && !channel.done) {
-                    this.executeEffect(channel);
-                }
                 if (channel.period && !channel.off) {
+                    const sample = this.samples[channel.sample];
+
+                    // TODO: check that no effect can be applied without a note
+                    // otherwise that will have to be moved outside this loop
+                    if (this.newRow && channel.cmd && !channel.done) {
+                        this.executeEffect(channel);
+                    }
                     // actually mix audio
-                    buffer[i] += this.samples[channel.sample].data[Math.floor(channel.samplePos)];
+                    buffer[i] += sample.data[Math.floor(channel.samplePos)] * (channel.volume/64.0);
                     const sampleSpeed = (7093789.2 / (channel.period * 2)) / this.mixingRate;
                     channel.samplePos += sampleSpeed;
                     if (channel.samplePos >= this.samples[channel.sample].length) {
@@ -109,6 +114,7 @@ class PTModule {
                 }
             }
             this.filledSamples++;
+            this.newRow = false;
         }
     }
 
@@ -179,6 +185,9 @@ class PTModule {
 
             if (note.period) {
                 this.channels[i] = note;
+                // calculate channel volume once per row
+                // so that effect volume is applied during the whole row
+                note.volume = this.samples[note.sample].volume;
             } else if (!this.channels[i]) {
                 // empty note as first element
                 this.channels[i] = note;
@@ -190,10 +199,16 @@ class PTModule {
             //     effectdata &= 0xf; /* Only one nibble data for extended command */
             // }
         }
+
+        this.newRow = true;
     }
 
     executeEffect(channel) {
-        Effects[channel.cmd](this, channel);
+        try {
+            Effects[channel.cmd](this, channel);
+        } catch (err) {
+            console.warn(`effect not implemented: ${channel.cmd}`);
+        }
     }
 
     getInstruments() {
@@ -281,6 +296,14 @@ const Effects = {
      */
     0xF(Module, channel) {
         Module.speed = channel.data;
+        channel.done = true;
+    },
+
+    /**
+     * Set channel volume
+     */
+    0xC(Module, channel) {
+        channel.volume = channel.data;
         channel.done = true;
     }
 }
