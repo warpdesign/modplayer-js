@@ -149,8 +149,8 @@ class PTModule {
             const offset = i * 4;
             // depends on command: maybe we don't touch anything
             const note = {
-                sample: (data[0 + offset] & 0xF0 | data[2 + offset] >> 4) - 1,
-                period: (data[0 + offset] & 0x0F0) << 8 | data[1 + offset],
+                sample: (data[offset] & 0xF0 | data[2 + offset] >> 4) - 1,
+                period: (data[offset] & 0x0F) << 8 | data[1 + offset],
                 // case 856: notename = "C-1"; break;
                 // case 808: notename = "C#1"; break;
                 // case 762: notename = "D-1"; break;
