@@ -86,9 +86,12 @@ class PTModule {
      *
      * This method is called each time the buffer should be filled with data
      */
-    mix(buffer) {
-        for (let i = 0; i < buffer.length; ++i) {
-            buffer[i] = 0.0;
+    mix(lbuffer, rbuffer) {
+        let buffer = null;
+
+        for (let i = 0; i < lbuffer.length; ++i) {
+            lbuffer[i] = 0.0;
+            rbuffer[i] = 0.0;
 
             // playing speed test
             this.tick();
@@ -103,7 +106,8 @@ class PTModule {
                         this.executeEffect(channel);
                     }
                     // actually mix audio
-                    buffer[i] += sample.data[Math.floor(channel.samplePos)] * (channel.volume/64.0);
+                    rbuffer[i] += sample.data[Math.floor(channel.samplePos)] * (channel.volume/64.0);
+
                     const sampleSpeed = (7093789.2 / (channel.period * 2)) / this.mixingRate;
                     channel.samplePos += sampleSpeed;
                     if (channel.samplePos >= this.samples[channel.sample].length) {

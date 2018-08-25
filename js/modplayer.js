@@ -35,9 +35,9 @@ const ModPlayer = {
         this.mixingRate = this.context.sampleRate;
 
         if (typeof this.context.createJavaScriptNode === 'function') {
-            this.mixerNode = this.context.createJavaScriptNode(bufferlen, 1, 1);
+            this.mixerNode = this.context.createJavaScriptNode(bufferlen, 1, 2);
         } else {
-            this.mixerNode = this.context.createScriptProcessor(bufferlen, 1, 1);
+            this.mixerNode = this.context.createScriptProcessor(bufferlen, 1, 2);
         }
 
         if (this.mixerNode) {
@@ -62,15 +62,16 @@ const ModPlayer = {
 
         if (this.playing && this.module) {
             this.bufferFull = true;
-            this.module.mix(audioProcessingEvent.outputBuffer.getChannelData(0));
+            this.module.mix(audioProcessingEvent.outputBuffer.getChannelData(0), audioProcessingEvent.outputBuffer.getChannelData(1));
         } else if (this.bufferFull) {
-            this.emptyOutputBuffer(audioProcessingEvent.outputBuffer.getChannelData(0));
+            this.emptyOutputBuffer(audioProcessingEvent.outputBuffer.getChannelData(0), audioProcessingEvent.outputBuffer.getChannelData(1));
         }
     },
 
-    emptyOutputBuffer(buffer) {
-        for (let i = 0; i < buffer.length; ++i) {
-            buffer[i] = 0.0;
+    emptyOutputBuffer(lbuffer, rbuffer) {
+        for (let i = 0; i < lbuffer.length; ++i) {
+            lbuffer[i] = 0.0;
+            rbuffer[i] = 0.0;
         }
     },
 
