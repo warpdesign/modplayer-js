@@ -34,6 +34,19 @@ class PTModule {
         this.ready = false;
     }
 
+    /**
+     * Resets song position to start and speed to default values and decode first row
+     */
+    resetValues() {
+        this.started = false;
+        this.position = 0;
+        this.row = 0;
+        this.ticks = 0;
+        this.filledSamples = 0;
+        this.speed = 6;
+        this.decodeRow();
+    }
+
     decodeData() {
         console.log('Decoding module data...');
         this.name = BinUtils.readAscii(this.buffer, 20);
@@ -42,7 +55,7 @@ class PTModule {
         this.getPatternData();
         this.getSampleData();
         this.calcTickSpeed();
-        this.decodeRow();
+        this.resetValues();
         this.ready = true;
 
         document.dispatchEvent(new Event('module_loaded'));

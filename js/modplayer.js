@@ -77,7 +77,11 @@ const ModPlayer = {
     play() {
         if (this.module && this.module.ready) {
             console.log('Playing module...');
-            this.playing = true;
+            this.playing = !this.playing;
+
+            if (!this.playing) {
+                this.pause();
+            }
         } else {
             console.log('Module not ready');
         }
@@ -97,8 +101,16 @@ const ModPlayer = {
     },
 
     stop() {
-        console.log('Stopping module...');
-        this.playing = false;
+        console.log('Stopping playback');
+        this.pause();
+        if (this.module && this.module.ready) {
+            this.module.resetValues();
+        }
         // TODO: reset module to start
+    },
+
+    pause() {
+        console.log('Pausing module...');
+        this.playing = false;
     }
 }
