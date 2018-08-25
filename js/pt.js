@@ -195,6 +195,15 @@ class PTModule {
             };
 
             if (note.period) {
+                // if a period was selected but no instrument set
+                // use the previous one
+                if (note.sample === -1) {
+                    note.sample = this.channels[i].sample;
+                } else {
+                    // calculate channel volume once per row only if new sample
+                    // so that effect volume is applied during the whole row
+                    note.volume = this.samples[note.sample].volume;
+                }
                 const sample = this.samples[note.sample];
                 if (sample.repeatStart) {
                     note.samplePos = sample.repeatStart;
@@ -203,9 +212,6 @@ class PTModule {
                     note.sampleLength = sample.length;
                 }
                 this.channels[i] = note;
-                // calculate channel volume once per row
-                // so that effect volume is applied during the whole row
-                note.volume = this.samples[note.sample].volume;
             } else if (!this.channels[i]) {
                 // empty note as first element
                 this.channels[i] = note;
@@ -230,7 +236,7 @@ class PTModule {
         try {
             Effects[channel.cmd](this, channel);
         } catch (err) {
-            console.warn(`effect not implemented: ${channel.cmd}`);
+            console.warn(`effect not implemented: ${channel.cmd.toString(16).padStart(2, '0')}/${channel.data.toString(16).padStart(2, '0')}`);
         }
     }
 
