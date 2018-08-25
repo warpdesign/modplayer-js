@@ -97,23 +97,29 @@ class PTModule {
                 const channel = this.channels[chan];
                 const buffer = chan > 1 ? rbuffer : lbuffer;
 
+                // TODO: check that no effect can be applied without a note
+                // otherwise that will have to be moved outside this loop
+                // if (this.newRow && chan === 3 && this.row === 2)
+                //     debugger;
+                if (this.newRow && channel.cmd && !channel.done) {
+                    this.executeEffect(channel);
+                }
+
                 if (channel.period && !channel.off) {
                     const sample = this.samples[channel.sample];
 
-                    // TODO: check that no effect can be applied without a note
-                    // otherwise that will have to be moved outside this loop
-                    if (this.newRow && channel.cmd && !channel.done) {
-                        this.executeEffect(channel);
-                    }
                     // actually mix audio
                     buffer[i] += sample.data[Math.floor(channel.samplePos)] * (channel.volume/64.0);
 
                     const sampleSpeed = (7093789.2 / (channel.period * 2)) / this.mixingRate;
                     channel.samplePos += sampleSpeed;
-                    if (channel.samplePos >= this.samples[channel.sample].length) {
-                        // TODO: handle repeat properly
-                        channel.samplePos = 0;
-                        channel.off = true;
+                    if (channel.samplePos >= channel.sampleLength) {
+                        if (sample.repeatLength) {
+                            // TODO: handle repeat properly
+                            channel.samplePos = sample.repeatStart || 0;
+                        } else {
+                            channel.off = true;
+                        }
                     }
                 }
             }
@@ -140,7 +146,7 @@ class PTModule {
                     this.getNextPattern(true);
                 }
 
-                console.log('** next row !', this.row);
+                console.log('** next row !', this.row.toString(16));
 
                 this.decodeRow();
             }
@@ -159,6 +165,7 @@ class PTModule {
     }
 
     decodeRow() {
+        // console.time('decodeRow');
         if (!this.started) {
             this.started = true;
             this.getNextPattern();
@@ -188,6 +195,13 @@ class PTModule {
             };
 
             if (note.period) {
+                const sample = this.samples[note.sample];
+                if (sample.repeatStart) {
+                    note.samplePos = sample.repeatStart;
+                    note.sampleLength = sample.repeatLength;
+                } else {
+                    note.sampleLength = sample.length;
+                }
                 this.channels[i] = note;
                 // calculate channel volume once per row
                 // so that effect volume is applied during the whole row
@@ -195,6 +209,11 @@ class PTModule {
             } else if (!this.channels[i]) {
                 // empty note as first element
                 this.channels[i] = note;
+            } else {
+                // effects can be applied again
+                this.channels[i].done = false;
+                this.channels[i].cmd = note.cmd;
+                this.channels[i].data = note.data;
             }
             // effectcommand =* (notedata + 2) & 0xF;
             // effectdata =* (notedata + 3);
@@ -203,7 +222,7 @@ class PTModule {
             //     effectdata &= 0xf; /* Only one nibble data for extended command */
             // }
         }
-
+        //console.timeEnd('decodeRow');
         this.newRow = true;
     }
 
@@ -233,7 +252,7 @@ class PTModule {
                 repeatLength: BinUtils.readWord(this.buffer, offset + 28) * 2,
                 data: null
             };
-            // Existing mod players seem to do that: legacy stuff ?
+            // Existing mod players seem to play a sample only once if repeatLength is set to 2
             if (sample.repeatLength === 2) {
                 sample.repeatLength = 0;
             }
@@ -307,6 +326,7 @@ const Effects = {
      * Set channel volume
      */
     0xC(Module, channel) {
+        console.log('changing volume to', channel.data);
         channel.volume = channel.data;
         channel.done = true;
     }
