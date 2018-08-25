@@ -72,8 +72,27 @@ class PTModule {
      */
     mix(buffer) {
         for (let i = 0; i < buffer.length; ++i) {
+            buffer[i] = 0.0;
+
             // playing speed test
             this.tick();
+            for (let chan = 0; chan < 1; ++chan) {
+                const channel = this.channels[chan];
+                if (!this.ticks && channel.cmd && !channel.done) {
+                    this.executeEffect(channel);
+                }
+                if (channel.period && !channel.off) {
+                    // actually mix audio
+                    buffer[i] += this.samples[channel.sample].data[Math.floor(channel.samplePos)];
+                    const sampleSpeed = (7093789.2 / (channel.period * 2)) / this.mixingRate;
+                    channel.samplePos += sampleSpeed;
+                    if (channel.samplePos >= this.samples[channel.sample].length) {
+                        // TODO: handle repeat properly
+                        channel.samplePos = 0;
+                        channel.off = true;
+                    }
+                }
+            }
             this.filledSamples++;
         }
     }
@@ -88,18 +107,37 @@ class PTModule {
             this.ticks++;
             this.filledSamples = 0;
             if (this.ticks >= this.speed) {
-                console.log('**tick !', tickReached++);
+                console.log('** next row !', ++tickReached);
                 // TO DO: goto next row
                 this.ticks = 0;
+                this.row++;
+                if (this.row > 63) {
+                    this.row = 0;
+                    this.getNextPattern(true);
+                }
+
+                this.decodeRow();
             }
         }
+    }
+
+    getNextPattern(updatePos) {
+        updatePos && this.position++;
+
+        // Loop ? Use loop parameter
+        if (this.position == this.positions.length - 1) {
+            console.log('Warning: last position reached, going back to 0');
+            this.position = 0;
+        }
+        this.pattern = this.positions[this.position];
     }
 
     decodeRow() {
         if (!this.started) {
             this.started = true;
-            this.pattern = this.positions[0];
+            this.getNextPattern();
         }
+
         const pattern = this.patterns[this.pattern];
 
         const data = new Uint8Array(pattern, this.row * 16, 16);
@@ -117,11 +155,18 @@ class PTModule {
                 // /* etc */
                 // default: notename = "???"; /* This should NOT occur; if it do, it is */
                 // /* not a ProTracker module! */
-                effect: data[2 + offset] & 0xF,
-                effectData: data[3 + offset],
-                samplePos: 0
+                cmd: data[2 + offset] & 0xF,
+                data: data[3 + offset],
+                samplePos: 0,
+                done: false
             };
-            this.channels[i] = note;
+
+            if (note.period) {
+                this.channels[i] = note;
+            } else if (!this.channels[i]) {
+                // empty note as first element
+                this.channels[i] = note;
+            }
             // effectcommand =* (notedata + 2) & 0xF;
             // effectdata =* (notedata + 3);
             // if effectcommand == 0xE then /* Extended command */ {
@@ -131,8 +176,8 @@ class PTModule {
         }
     }
 
-    executeEffect(cmd, data, channel) {
-        Effects[cmd](data, channel);
+    executeEffect(channel) {
+        Effects[channel.cmd](this, channel);
     }
 
     getInstruments() {
@@ -214,7 +259,12 @@ class PTModule {
 }
 
 const Effects = {
-    0xF(Module, data) {
-        Module.speed = data;
+    /**
+     *
+     * Change playback speed
+     */
+    0xF(Module, channel) {
+        Module.speed = channel.data;
+        channel.done = true;
     }
 }

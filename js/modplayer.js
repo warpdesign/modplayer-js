@@ -85,7 +85,7 @@ const ModPlayer = {
     },
 
     stop() {
-        console.log('Stoping module...');
+        console.log('Stopping module...');
         this.playing = false;
     }
 }
