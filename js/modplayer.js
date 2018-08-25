@@ -5,6 +5,7 @@ const ModPlayer = {
     buffer: null,
     mixingRate: 44100,
     playing: false,
+    bufferFull: false,
 
     init() {
         this.createContext();
@@ -60,14 +61,25 @@ const ModPlayer = {
         }*/
 
         if (this.playing && this.module) {
+            this.bufferFull = true;
             this.module.mix(audioProcessingEvent.outputBuffer.getChannelData(0));
+        } else if (this.bufferFull) {
+            this.emptyOutputBuffer(audioProcessingEvent.outputBuffer.getChannelData(0));
+        }
+    },
+
+    emptyOutputBuffer(buffer) {
+        for (let i = 0; i < buffer.length; ++i) {
+            buffer[i] = 0.0;
         }
     },
 
     play() {
-        console.log('Playing module...');
-        if (this.module) {
+        if (this.module && this.module.ready) {
+            console.log('Playing module...');
             this.playing = true;
+        } else {
+            console.log('Module not ready');
         }
         // if (this.audioBuffer) {
         //     // Get an AudioBufferSourceNode.
@@ -87,5 +99,6 @@ const ModPlayer = {
     stop() {
         console.log('Stopping module...');
         this.playing = false;
+        // TODO: reset module to start
     }
 }

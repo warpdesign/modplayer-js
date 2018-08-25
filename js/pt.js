@@ -31,6 +31,7 @@ class PTModule {
         this.ticks = 0;
         this.buffer = null;
         this.started = false;
+        this.ready = false;
     }
 
     decodeData() {
@@ -42,6 +43,7 @@ class PTModule {
         this.getSampleData();
         this.calcTickSpeed();
         this.decodeRow();
+        this.ready = true;
 
         document.dispatchEvent(new Event('module_loaded'));
     }
@@ -107,7 +109,6 @@ class PTModule {
             this.ticks++;
             this.filledSamples = 0;
             if (this.ticks >= this.speed) {
-                console.log('** next row !', ++tickReached);
                 // TO DO: goto next row
                 this.ticks = 0;
                 this.row++;
@@ -115,6 +116,8 @@ class PTModule {
                     this.row = 0;
                     this.getNextPattern(true);
                 }
+
+                console.log('** next row !', this.row);
 
                 this.decodeRow();
             }
