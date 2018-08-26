@@ -6,18 +6,28 @@ const ModPlayer = {
     mixingRate: 44100,
     playing: false,
     bufferFull: false,
-
+    ready: true,
     init() {
         this.createContext();
+        this.module = new PTModule(this.mixingRate);
     },
 
     async loadModule(url) {
+        if (!this.ready) {
+            return;
+        } else {
+            this.ready = false;
+        }
+
+        this.stop();
+
         if (!this.context) {
             this.createContext();
         }
         const buffer = await this.loadBinary(url);
-        this.module = new PTModule(buffer, this.mixingRate);
-        this.module.decodeData();
+        this.module.decodeData(buffer);
+
+        this.ready = true;
 
         document.dispatchEvent(new Event('module_loaded'));
     },

@@ -1,9 +1,7 @@
 var tickReached = 0;
 
 class PTModule {
-    constructor(buffer, mixingRate) {
-        this.init();
-        this.buffer = buffer;
+    constructor(mixingRate) {
         this.mixingRate = mixingRate;
         // pattern data always starts at offset 1084
         this.patternOffset = 1084;
@@ -48,9 +46,11 @@ class PTModule {
         this.decodeRow();
     }
 
-    decodeData() {
-        this.ready = false;
+    decodeData(buffer) {
         console.log('Decoding module data...');
+        this.ready = false;
+        this.init();
+        this.buffer = buffer;
         this.name = BinUtils.readAscii(this.buffer, 20);
 
         this.getInstruments();
@@ -247,7 +247,6 @@ class PTModule {
         try {
             Effects[channel.cmd](this, channel);
         } catch (err) {
-            debugger;
             console.warn(`effect not implemented: ${channel.cmd.toString(16).padStart(2, '0')}/${channel.data.toString(16).padStart(2, '0')}`);
         }
     }

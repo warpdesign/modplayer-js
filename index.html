@@ -10,7 +10,7 @@
             grid-template-rows: 5% 85% 10%;
             grid-template-areas:
                 "title title"
-                "patterns samples"
+                "viz samples"
                 "controls controls";
         }
 
@@ -18,8 +18,8 @@
             grid-area:title;
         }
 
-        .player .patterns{
-            grid-area:patterns;
+        .player .viz{
+            grid-area:viz;
         }
 
         .player .samples{
@@ -48,9 +48,24 @@
     <script type="text/javascript" src="js/pt.js"></script>
     <script type="text/javascript" src="js/modplayer.js"></script>
     <script type="text/javascript">
+    var moduleList = [
+        'agony.mod',
+        'all_that_she_wants.mod',
+        'bigtime.mod',
+        'cannonfodder.mod',
+        'desert_strike.mod',
+        'LotusII.mod',
+        'nolimit.mod',
+        'projectx.mod',
+        'silkworm.mod',
+        'switchback.mod'
+    ],
+    selectedMod = 0,
+    prefix = 'audio/';
+
     window.onload = function() {
         var canvas = document.getElementById('visualizer'),
-            effect = 0,
+            effect = 1,
             effects = [],
             ctx = canvas.getContext('2d'),
             canvasWidth = canvas.width,
@@ -67,7 +82,24 @@
             document.querySelector('.sample-list').innerHTML = str;
 
             document.querySelector('.title').innerText = ModPlayer.module.name;
+
+            document.querySelectorAll('.controls button').forEach((button) => {
+                button.removeAttribute('disabled');
+            });
         });
+
+        var select = document.querySelector('select.modules'),
+            options = '';
+
+        moduleList.forEach((name, i) => {
+            options += `<option name="mod_${i}" value="${i}"`;
+            if (i === selectedMod) {
+                options += ' selected="selected"';
+            }
+            options += `>${name}</option>`;
+        });
+
+        select.innerHTML = options;
 
         document.addEventListener('analyzer_ready', (event) => {
             requestAnimationFrame(() => {
@@ -146,27 +178,40 @@
 
         effects.push(drawBars,drawOscillo,drawOscillo2);
 
-        ModPlayer.loadModule('audio/desert_strike.mod');
+        ModPlayer.init();
+        loadModule(selectedMod);
+    }
+
+    function loadModule(moduleIndex) {
+        var moduleName = moduleList[moduleIndex];
+
+        if (ModPlayer.ready && moduleName) {
+            document.querySelectorAll('.controls button').forEach((button) => {
+                button.setAttribute('disabled', 'disabled');
+            });
+            ModPlayer.loadModule(prefix + moduleName);
+        }
     }
     </script>
 </head>
 <body>
     <div class="player">
         <div class="info">
+            <label>Module List:</label>
+            <select name="modules" class="modules" onchange="loadModule(document.querySelector('.modules').selectedIndex)"></select><br />
             <h4>Title: <span class="title"></span> <span class="bpm">bpm</span> <span class="speed">speed</span></h4>
         </div>
-        <div class="patterns">
-            <h4>Patterns:</h4>
+        <div class="viz">
+            <h4>Visualizer:</h4>
             <canvas width="512" height="256" id="visualizer"></canvas>
-            <ul class="pattern-list" name="pattern-list"></ul>
         </div>
         <div class="samples">
             <h4>Samples:</h4>
             <select class="sample-list" name="sample-list" multiple></select>
         </div>
         <div class="controls">
-            <button onClick="ModPlayer.play()">Play / Pause</button>
-            <button onClick="ModPlayer.stop()">Stop</button>
+            <button disabled="disabled" onClick="ModPlayer.play()">Play / Pause</button>
+            <button disabled="disabled" onClick="ModPlayer.stop()">Stop</button>
         </div>
     </div>
 </body>
