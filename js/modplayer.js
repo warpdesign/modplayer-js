@@ -40,7 +40,7 @@ const ModPlayer = {
         return buffer;
     },
 
-    createContext({ bufferlen = 2048 } = {}) {
+    createContext({ bufferlen = 4096 } = {}) {
         console.log('Creating audio context...');
         this.context = new (window.AudioContext || window.webkitAudioContext)();
 
