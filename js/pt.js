@@ -86,16 +86,20 @@ class PTModule {
      *
      * This method is called each time the buffer should be filled with data
      */
-    mix(lbuffer, rbuffer) {
-        for (let i = 0; i < lbuffer.length; ++i) {
-            lbuffer[i] = 0.0;
-            rbuffer[i] = 0.0;
+    mix(buffers, length) {
+        for (let i = 0; i < length; ++i) {
+            buffers[0][i] = 0.0;
+            buffers[1][i] = 0.0;
+
+            let outputChannel = 0;
 
             // playing speed test
             this.tick();
             for (let chan = 0; chan < this.channels.length; ++chan) {
                 const channel = this.channels[chan];
-                const buffer = chan > 1 ? rbuffer : lbuffer;
+                // select left/right output depending on module channel:
+                // voices 0,3 go to left channel, 1,2 go to right channel
+                outputChannel = outputChannel ^ (chan & 1);
 
                 // TODO: check that no effect can be applied without a note
                 // otherwise that will have to be moved outside this loop
@@ -109,16 +113,19 @@ class PTModule {
                     const sample = this.samples[channel.sample];
 
                     // actually mix audio
-                    buffer[i] += sample.data[Math.floor(channel.samplePos)] * (channel.volume/64.0);
+                    buffers[outputChannel][i] += sample.data[Math.floor(channel.samplePos)] * (channel.volume/64.0);
 
-                    const sampleSpeed = (7093789.2 / (channel.period * 2)) / this.mixingRate;
+                    const sampleSpeed = 7093789.2 / ((channel.period * 2) * this.mixingRate);
                     channel.samplePos += sampleSpeed;
-                    if (channel.samplePos >= channel.sampleLength) {
-                        if (sample.repeatLength) {
-                            // TODO: handle repeat properly
-                            channel.samplePos = sample.repeatStart || 0;
-                        } else {
-                            channel.off = true;
+                    // repeat samples
+                    if (!channel.off) {
+                        if (!sample.repeatLength && !sample.repeatStart) {
+                            if (channel.samplePos > sample.length) {
+                                channel.samplePos = 0;
+                                channel.off = true;
+                            }
+                        } else if (channel.samplePos >= (sample.repeatStart + sample.repeatLength)) {
+                            channel.samplePos -= sample.repeatLength;
                         }
                     }
                 }
@@ -194,6 +201,12 @@ class PTModule {
                 done: false
             };
 
+            // extended command
+            if (note.command === 0xE) {
+                note.extcmd = note.data >> 4;
+                note.data &= 0xF;
+            }
+
             if (note.period) {
                 // if a period was selected but no instrument set
                 // use the previous one
@@ -204,18 +217,15 @@ class PTModule {
                     // so that effect volume is applied during the whole row
                     note.volume = this.samples[note.sample].volume;
                 }
-                const sample = this.samples[note.sample];
-                if (sample.repeatStart) {
-                    note.samplePos = sample.repeatStart;
-                    note.sampleLength = sample.repeatLength;
-                } else {
-                    note.sampleLength = sample.length;
-                }
                 this.channels[i] = note;
             } else if (!this.channels[i]) {
                 // empty note as first element
                 this.channels[i] = note;
             } else {
+                // sample selected but no period
+                if (note.sample > -1) {
+                    debugger;
+                }
                 // effects can be applied again
                 this.channels[i].done = false;
                 this.channels[i].cmd = note.cmd;

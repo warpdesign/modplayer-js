@@ -60,18 +60,23 @@ const ModPlayer = {
             }
         }*/
 
+        const buffers = [
+            audioProcessingEvent.outputBuffer.getChannelData(0),
+            audioProcessingEvent.outputBuffer.getChannelData(1)
+        ];
+
         if (this.playing && this.module) {
             this.bufferFull = true;
-            this.module.mix(audioProcessingEvent.outputBuffer.getChannelData(0), audioProcessingEvent.outputBuffer.getChannelData(1));
+            this.module.mix(buffers, audioProcessingEvent.outputBuffer.length);
         } else if (this.bufferFull) {
-            this.emptyOutputBuffer(audioProcessingEvent.outputBuffer.getChannelData(0), audioProcessingEvent.outputBuffer.getChannelData(1));
+            this.emptyOutputBuffer(buffers, audioProcessingEvent.outputBuffer.length);
         }
     },
 
-    emptyOutputBuffer(lbuffer, rbuffer) {
-        for (let i = 0; i < lbuffer.length; ++i) {
-            lbuffer[i] = 0.0;
-            rbuffer[i] = 0.0;
+    emptyOutputBuffer(buffers, length) {
+        for (let i = 0; i < length; ++i) {
+            buffers[0][i] = 0.0;
+            buffers[1][i] = 0.0;
         }
     },
 
