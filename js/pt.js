@@ -49,6 +49,7 @@ class PTModule {
     }
 
     decodeData() {
+        this.ready = false;
         console.log('Decoding module data...');
         this.name = BinUtils.readAscii(this.buffer, 20);
 
@@ -58,8 +59,6 @@ class PTModule {
         this.calcTickSpeed();
         this.resetValues();
         this.ready = true;
-
-        document.dispatchEvent(new Event('module_loaded'));
     }
 
     detectMaxSamples() {
@@ -103,7 +102,7 @@ class PTModule {
 
                 // TODO: check that no effect can be applied without a note
                 // otherwise that will have to be moved outside this loop
-                // if (this.newRow && chan === 3 && this.row === 2)
+                // if (this.newRow && chan === 1 && this.row === 22 && this.position === 4)
                 //     debugger;
                 if (this.newRow && channel.cmd && !channel.done) {
                     this.executeEffect(channel);
@@ -113,7 +112,7 @@ class PTModule {
                     const sample = this.samples[channel.sample];
 
                     // actually mix audio
-                    buffers[outputChannel][i] += sample.data[Math.floor(channel.samplePos)] * (channel.volume/64.0);
+                    buffers[outputChannel][i] += (sample.data[Math.floor(channel.samplePos)] * channel.volume) / 64.0;
 
                     const sampleSpeed = 7093789.2 / ((channel.period * 2) * this.mixingRate);
                     channel.samplePos += sampleSpeed;
@@ -125,7 +124,7 @@ class PTModule {
                                 channel.off = true;
                             }
                         } else if (channel.samplePos >= (sample.repeatStart + sample.repeatLength)) {
-                            channel.samplePos -= sample.repeatLength;
+                            channel.samplePos = sample.repeatStart;
                         }
                     }
                 }
@@ -153,7 +152,7 @@ class PTModule {
                     this.getNextPattern(true);
                 }
 
-                console.log('** next row !', this.row.toString(16));
+                // console.log('** next row !', this.row.toString(16));
 
                 this.decodeRow();
             }
@@ -167,6 +166,8 @@ class PTModule {
         if (this.position == this.positions.length - 1) {
             console.log('Warning: last position reached, going back to 0');
             this.position = 0;
+        } else {
+            console.log('// position', this.position, this.pattern);
         }
         this.pattern = this.positions[this.position];
     }
@@ -246,6 +247,7 @@ class PTModule {
         try {
             Effects[channel.cmd](this, channel);
         } catch (err) {
+            debugger;
             console.warn(`effect not implemented: ${channel.cmd.toString(16).padStart(2, '0')}/${channel.data.toString(16).padStart(2, '0')}`);
         }
     }
@@ -259,6 +261,8 @@ class PTModule {
            headerLength = 30;
 
         for (let i = 0; i < this.maxSamples; ++i) {
+            // if (i === 16)
+            //     debugger;
             const sample = {
                 name: BinUtils.readAscii(this.buffer, 22, offset),
                 length: BinUtils.readWord(this.buffer, offset + 22) * 2,
@@ -268,6 +272,7 @@ class PTModule {
                 repeatLength: BinUtils.readWord(this.buffer, offset + 28) * 2,
                 data: null
             };
+6
             // Existing mod players seem to play a sample only once if repeatLength is set to 2
             if (sample.repeatLength === 2) {
                 sample.repeatLength = 0;

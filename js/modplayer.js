@@ -18,6 +18,8 @@ const ModPlayer = {
         const buffer = await this.loadBinary(url);
         this.module = new PTModule(buffer, this.mixingRate);
         this.module.decodeData();
+
+        document.dispatchEvent(new Event('module_loaded'));
     },
 
     async loadBinary(url) {
@@ -28,7 +30,7 @@ const ModPlayer = {
         return buffer;
     },
 
-    createContext({ bufferlen = 8192 } = {}) {
+    createContext({ bufferlen = 2048 } = {}) {
         console.log('Creating audio context...');
         this.context = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -40,9 +42,16 @@ const ModPlayer = {
             this.mixerNode = this.context.createScriptProcessor(bufferlen, 1, 2);
         }
 
+        // visualize stuff
+        this.analyserNode = this.context.createAnalyser();
+        this.amplitudeArray = new Uint8Array(this.analyserNode.frequencyBinCount);
+        this.analyserNode.minDecibels = -90;
+        this.analyserNode.maxDecibels = -10;
+
         if (this.mixerNode) {
             this.mixerNode.onaudioprocess = (ape) => this.mix(ape);
             this.mixerNode.connect(this.context.destination);
+            this.mixerNode.connect(this.analyserNode);
         }
     },
 
@@ -70,6 +79,14 @@ const ModPlayer = {
             this.module.mix(buffers, audioProcessingEvent.outputBuffer.length);
         } else if (this.bufferFull) {
             this.emptyOutputBuffer(buffers, audioProcessingEvent.outputBuffer.length);
+        }
+
+        this.analyserNode.getByteTimeDomainData(this.amplitudeArray);
+        if (this.playing) {
+             // requestAnimFrame(drawTimeDomain);
+            const event = new Event('analyzer_ready');
+            event.data = this.amplitudeArray;
+            document.dispatchEvent(event);
         }
     },
 

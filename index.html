@@ -48,30 +48,106 @@
     <script type="text/javascript" src="js/pt.js"></script>
     <script type="text/javascript" src="js/modplayer.js"></script>
     <script type="text/javascript">
-    ModPlayer.loadModule('audio/desert_strike.mod');
+    window.onload = function() {
+        var canvas = document.getElementById('visualizer'),
+            effect = 0,
+            effects = [],
+            ctx = canvas.getContext('2d'),
+            canvasWidth = canvas.width,
+            canvasHeight = canvas.height;
 
-    document.addEventListener('keyup', (e) => {
-        if (e.keyCode === 107) {
-            ModPlayer.sampleSpeed += 0.05;
-            console.log('new sampleSpeed', ModPlayer.sampleSpeed);
-        } else if (e.keyCode === 109) {
-            ModPlayer.sampleSpeed -= 0.05;
-            console.log('new sampleSpeed', ModPlayer.sampleSpeed);
+        document.addEventListener('module_loaded', () => {
+            console.log('Module loaded!');
+            const samples = ModPlayer.module.samples;
+            let str = '';
+            for (let i = 0; i < samples.length; ++i) {
+                str += `<option>${samples[i].name}</option>`;
+            }
+
+            document.querySelector('.sample-list').innerHTML = str;
+
+            document.querySelector('.title').innerText = ModPlayer.module.name;
+        });
+
+        document.addEventListener('analyzer_ready', (event) => {
+            requestAnimationFrame(() => {
+                effects[effect](event.data);
+            });
+        });
+
+        canvas.onclick = () => {
+            effect++;
+            if (effect >= effects.length) {
+                effect = 0;
+            }
+        };
+
+        function drawBars(amplitudeArray) {
+            var bufferLength = amplitudeArray.length;
+            ctx.fillStyle = 'rgb(0, 0, 0)';
+            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+            var barWidth = (canvasWidth / bufferLength) * 2.5 - 1;
+            var barHeight;
+            var x = 0;
+
+            for (var i = 0; i < bufferLength; i++) {
+                barHeight = amplitudeArray[i];
+
+                ctx.fillStyle = 'rgb(' + (barHeight + 100) + ',50,50)';
+                ctx.fillRect(x, canvasHeight - barHeight / 2, barWidth, barHeight / 2);
+
+                x += barWidth;
+            }
         }
-    });
 
-    document.addEventListener('module_loaded', () => {
-        console.log('Module loaded!');
-        const samples = ModPlayer.module.samples;
-        let str = '';
-        for (let i = 0; i < samples.length; ++i) {
-            str += `<option>${samples[i].name}</option>`;
+        function drawOscillo(amplitudeArray) {
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+            for (var i = 0; i < amplitudeArray.length; i++) {
+                var value = amplitudeArray[i] / 256;
+                var y = canvasHeight - (canvasHeight * value) - 1;
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(i, y, 1, 1);
+            }
         }
 
-        document.querySelector('.sample-list').innerHTML = str;
+        function drawOscillo2(amplitudeArray) {
+            var bufferLength = amplitudeArray.length;
 
-        document.querySelector('.title').innerText = ModPlayer.module.name;
-    });
+            ctx.fillStyle = "rgb(200, 200, 200)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = "rgb(0, 0, 0)";
+
+            ctx.beginPath();
+
+            var sliceWidth = canvas.width * 1.0 / bufferLength;
+            var x = 0;
+
+            for (var i = 0; i < bufferLength; i++) {
+
+                var v = amplitudeArray[i] / 128.0;
+                var y = v * canvas.height / 2;
+
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+
+                x += sliceWidth;
+            }
+
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+        }
+
+        effects.push(drawBars,drawOscillo,drawOscillo2);
+
+        ModPlayer.loadModule('audio/desert_strike.mod');
+    }
     </script>
 </head>
 <body>
@@ -81,6 +157,7 @@
         </div>
         <div class="patterns">
             <h4>Patterns:</h4>
+            <canvas width="512" height="256" id="visualizer"></canvas>
             <ul class="pattern-list" name="pattern-list"></ul>
         </div>
         <div class="samples">
