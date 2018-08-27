@@ -33,7 +33,6 @@ const ModPlayer = {
     },
 
     async loadBinary(url) {
-        // first load raw pcm 44.100/16bit data
         const response = await betterFetch(url);
         const buffer = await response.arrayBuffer();
 
@@ -66,19 +65,6 @@ const ModPlayer = {
     },
 
     mix(audioProcessingEvent) {
-        /*
-        var outputBuffer = audioProcessingEvent.outputBuffer.getChannelData(0);
-
-        for (var i = 0; i < outputBuffer.length; ++i) {
-            if (this.samplePos <= this.sampleLength - 1) {
-                outputBuffer[i] = this.buffer[Math.floor(this.samplePos)];
-            }
-            this.samplePos += this.sampleSpeed;
-            if (this.samplePos >= this.sampleLength - 1) {
-                this.samplePos = 0;
-            }
-        }*/
-
         const buffers = [
             audioProcessingEvent.outputBuffer.getChannelData(0),
             audioProcessingEvent.outputBuffer.getChannelData(1)
@@ -88,12 +74,12 @@ const ModPlayer = {
             this.bufferFull = true;
             this.module.mix(buffers, audioProcessingEvent.outputBuffer.length);
         } else if (this.bufferFull) {
+            // attempt to empty buffer so that sound doesn't "crack" when resuming playback
             this.emptyOutputBuffer(buffers, audioProcessingEvent.outputBuffer.length);
         }
 
         this.analyserNode.getByteTimeDomainData(this.amplitudeArray);
         if (this.playing) {
-             // requestAnimFrame(drawTimeDomain);
             const event = new Event('analyzer_ready');
             event.data = this.amplitudeArray;
             document.dispatchEvent(event);
@@ -118,19 +104,6 @@ const ModPlayer = {
         } else {
             console.log('Module not ready');
         }
-        // if (this.audioBuffer) {
-        //     // Get an AudioBufferSourceNode.
-        //     // This is the AudioNode to use when we want to play an AudioBuffer
-        //     var source = audioCtx.createBufferSource();
-        //     // set the buffer in the AudioBufferSourceNode
-        //     source.buffer = this.audioBuffer;
-        //     source.playbackRate.value = 0.5;
-        //     // connect the AudioBufferSourceNode to the
-        //     // destination so we can hear the sound
-        //     source.connect(audioCtx.destination);
-        //     // start the source playing
-        //     source.start();
-        // }
     },
 
     stop() {
@@ -139,7 +112,6 @@ const ModPlayer = {
         if (this.module && this.module.ready) {
             this.module.resetValues();
         }
-        // TODO: reset module to start
     },
 
     pause() {

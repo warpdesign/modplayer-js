@@ -173,7 +173,6 @@ class PTModule {
     }
 
     decodeRow() {
-        // console.time('decodeRow');
         if (!this.started) {
             this.started = true;
             this.getNextPattern();
@@ -189,13 +188,6 @@ class PTModule {
             const note = {
                 sample: (data[offset] & 0xF0 | data[2 + offset] >> 4) - 1,
                 period: (data[offset] & 0x0F) << 8 | data[1 + offset],
-                // case 856: notename = "C-1"; break;
-                // case 808: notename = "C#1"; break;
-                // case 762: notename = "D-1"; break;
-                // case 856: notename = "D#1"; break;
-                // /* etc */
-                // default: notename = "???"; /* This should NOT occur; if it do, it is */
-                // /* not a ProTracker module! */
                 cmd: data[2 + offset] & 0xF,
                 data: data[3 + offset],
                 samplePos: 0,
@@ -232,14 +224,7 @@ class PTModule {
                 this.channels[i].cmd = note.cmd;
                 this.channels[i].data = note.data;
             }
-            // effectcommand =* (notedata + 2) & 0xF;
-            // effectdata =* (notedata + 3);
-            // if effectcommand == 0xE then /* Extended command */ {
-            //     extendedcommand = effectdata >> 4;
-            //     effectdata &= 0xf; /* Only one nibble data for extended command */
-            // }
         }
-        //console.timeEnd('decodeRow');
         this.newRow = true;
     }
 
