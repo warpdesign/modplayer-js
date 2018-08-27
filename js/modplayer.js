@@ -19,7 +19,7 @@ const ModPlayer = {
             this.ready = false;
         }
 
-        this.stop();
+        this.pause();
 
         if (!this.context) {
             this.createContext();
