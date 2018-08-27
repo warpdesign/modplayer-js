@@ -323,7 +323,12 @@ const Effects = {
      * Change playback speed
      */
     0xF(Module, channel) {
-        Module.speed = channel.data;
+        if (channel.data < 32) {
+            Module.speed = channel.data;
+        } else {
+            Module.bpm = channel.data;
+            this.calcTickSpeed();
+        }
         channel.done = true;
     },
 
