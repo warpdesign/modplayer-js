@@ -10,6 +10,27 @@
             justify-content:center;
             padding:40px;
         }
+
+        a.mdl-navigation__link.selected:before {
+            font-family: 'Material Icons';
+            font-weight: 400;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 24px;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            word-wrap: normal;
+            content: 'volume_up';
+            height: 18px;
+            color:black;
+            position: absolute;
+            left: 11px;
+        }
+
+        .mdl-layout__drawer .mdl-navigation .mdl-navigation__link.selected {
+            padding-left: 40px;
+        }
     </style>
     <script type="text/javascript" src="js/utils.js"></script>
     <script type="text/javascript" src="js/pt.js"></script>
@@ -184,6 +205,9 @@
                 button.setAttribute('disabled', '');
             });
 
+            document.querySelector('a.mdl-navigation__link.selected').classList.toggle('selected');
+            document.querySelector(`a.mdl-navigation__link.mod_${moduleIndex}`).classList.add('selected');
+
             ModPlayer.loadModule(prefix + moduleName);
         }
     }
@@ -254,7 +278,7 @@
                 <div class="demo-card-wide mdl-card mdl-shadow--2dp">
                     <div class="mdl-card__title">
                         <canvas width="512" height="128" id="visualizer"></canvas>
-                        <h2 class="mdl-card__title-text title"></h2>
+                        <h2 class="mdl-card__title-text"><i class="material-icons">audiotrack</i><span class="title"></span></h2>
                     </div>
                     <div class="mdl-card__supporting-text">
                         Information here
