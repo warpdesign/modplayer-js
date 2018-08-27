@@ -70,8 +70,10 @@
 
             document.querySelector('.title').innerText = ModPlayer.module.name;
 
+            document.querySelector('#loader').classList.remove('is-active');
+
             document.querySelectorAll('.controls button').forEach((button) => {
-                button.removeAttribute('disabled');
+                button.style.display = 'inline-block';
             });
 
             togglePlayButton();
@@ -200,8 +202,10 @@
                 document.querySelector('.mdl-layout__obfuscator').click();
             }
 
+            document.querySelector('#loader').classList.add('is-active');
+
             document.querySelectorAll('.controls button').forEach((button) => {
-                button.setAttribute('disabled', '');
+                button.style.display = 'none';
             });
 
             document.querySelector('a.mdl-navigation__link.selected').classList.toggle('selected');
@@ -229,12 +233,13 @@
                 <!-- Navigation. We hide it in small screens. -->
                 <nav class="mdl-navigation controls">
                     <!-- <a class="mdl-navigation__link mdl-navigation__link--icon github" href="https://github.com/warpdesign/modplayer-js"><i class="material-icons">link</i><span>GitHub</span></a> -->
-                    <button disabled class="mdl-button mdl-js-button mdl-button--icon play" onclick="togglePlay()">
+                    <button class="mdl-button mdl-js-button mdl-button--icon play" style="display:none;" onclick="togglePlay()">
                         <i class="material-icons">play_arrow</i>
                     </button>
-                    <button disabled class="mdl-button mdl-js-button mdl-button--icon play" onclick="stop()">
+                    <button class="mdl-button mdl-js-button mdl-button--icon play" style="display:none;" onclick="stop()">
                         <i class="material-icons">stop</i>
                     </button>
+                    <div id="loader" class="mdl-spinner mdl-js-spinner is-active"></div>
                 </nav>
             </div>
         </header>

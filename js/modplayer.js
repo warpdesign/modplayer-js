@@ -24,6 +24,7 @@ const ModPlayer = {
         if (!this.context) {
             this.createContext();
         }
+
         const buffer = await this.loadBinary(url);
         this.module.decodeData(buffer);
 
@@ -95,6 +96,11 @@ const ModPlayer = {
 
     play() {
         if (this.module && this.module.ready) {
+            // probably an iOS device: attempt to unlock webaudio
+            if (this.context.state === 'suspended' && 'ontouchstart' in window) {
+                this.context.resume();
+            }
+
             console.log('Playing module...');
             this.playing = !this.playing;
 
