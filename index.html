@@ -1,47 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
     <style type="text/css">
-        .player{
-            margin:auto;
-            width:1024px;
-            display:grid;
-            grid-template-columns: 70% 30%;
-            grid-template-rows: 5% 85% 10%;
-            grid-template-areas:
-                "title title"
-                "viz samples"
-                "controls controls";
-        }
-
-        .player .info{
-            grid-area:title;
-        }
-
-        .player .viz{
-            grid-area:viz;
-        }
-
-        .player .samples{
-            grid-area:samples;
-        }
-
-        .player .controls{
-            grid-area:controls;
-        }
-
-        .player > div{
-            padding:20px;
-        }
-
-        .player button{
-            padding:10px;
-            border:1px solid #777;
-        }
-
-        .player select{
-            padding:5px;
-            font-size:1.1em;
+        /* mdl */
+        .page-content{
+            display:flex;
+            justify-content:center;
+            padding:40px;
         }
     </style>
     <script type="text/javascript" src="js/utils.js"></script>
@@ -86,20 +53,26 @@
             document.querySelectorAll('.controls button').forEach((button) => {
                 button.removeAttribute('disabled');
             });
+
+            togglePlayButton();
         });
 
-        var select = document.querySelector('select.modules'),
+        var modNav = document.querySelector('.nav-module'),
             options = '';
 
         moduleList.forEach((name, i) => {
-            options += `<option name="mod_${i}" value="${i}"`;
+            options += `<a onclick="loadModule(${i});return false;" href="#" class="mdl-navigation__link mod_${i} `;
             if (i === selectedMod) {
-                options += ' selected="selected"';
+                options += ' selected';
             }
-            options += `>${name}</option>`;
+            options += `">${name}</a>`;
         });
 
-        select.innerHTML = options;
+        modNav.innerHTML = options;
+
+        componentHandler.upgradeDom();
+
+        // document.querySelectorAll('.nav-module').innerHTML += '<a class="mdl-navigation__link" href="">Link</a>';
 
         document.addEventListener('analyzer_ready', (event) => {
             requestAnimationFrame(() => {
@@ -120,6 +93,7 @@
             ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
             var barWidth = (canvasWidth / bufferLength) * 2.5 - 1;
+            barWidth *= 2;
             var barHeight;
             var x = 0;
 
@@ -176,43 +150,140 @@
             ctx.stroke();
         }
 
-        effects.push(drawBars,drawOscillo,drawOscillo2);
+        effects.push(drawBars,drawOscillo);
 
         ModPlayer.init();
-        loadModule(selectedMod);
+        loadModule(selectedMod, false);
     }
 
-    function loadModule(moduleIndex) {
+    function togglePlayButton() {
+        document.querySelector('button.play i').innerText = ModPlayer.playing && 'pause' || 'play_arrow';
+    }
+
+    function togglePlay() {
+        ModPlayer.play();
+        togglePlayButton();
+    }
+
+    function stop() {
+        ModPlayer.stop();
+        togglePlayButton();
+    }
+
+    function loadModule(moduleIndex, hideDrawer = true) {
         var moduleName = moduleList[moduleIndex];
 
         if (ModPlayer.ready && moduleName) {
+            // I guess that's the best way to programmatically hide the drawer
+            // since MDL does not provide any API to do that
+            if (hideDrawer) {
+                document.querySelector('.mdl-layout__obfuscator').click();
+            }
+
             document.querySelectorAll('.controls button').forEach((button) => {
-                button.setAttribute('disabled', 'disabled');
+                button.setAttribute('disabled', '');
             });
+
             ModPlayer.loadModule(prefix + moduleName);
         }
     }
+
     </script>
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.pink-deep_purple.min.css">
+    <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
 </head>
 <body>
-    <div class="player">
-        <div class="info">
-            <label>Module List:</label>
-            <select name="modules" class="modules" onchange="loadModule(document.querySelector('.modules').selectedIndex)"></select><br />
-            <h4>Title: <span class="title"></span> <span class="bpm">bpm</span> <span class="speed">speed</span></h4>
+    <!-- Always shows a header, even in smaller screens. -->
+    <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
+        <header class="mdl-layout__header">
+            <div class="mdl-layout__header-row">
+                <!-- Title -->
+                <span class="mdl-layout-title">Modplayer-js</span>
+                <!-- Add spacer, to align navigation to the right -->
+                <div class="mdl-layout-spacer"></div>
+                <!-- Navigation. We hide it in small screens. -->
+                <nav class="mdl-navigation controls">
+                    <!-- <a class="mdl-navigation__link mdl-navigation__link--icon github" href="https://github.com/warpdesign/modplayer-js"><i class="material-icons">link</i><span>GitHub</span></a> -->
+                    <button disabled class="mdl-button mdl-js-button mdl-button--icon play" onclick="togglePlay()">
+                        <i class="material-icons">play_arrow</i>
+                    </button>
+                    <button disabled class="mdl-button mdl-js-button mdl-button--icon play" onclick="stop()">
+                        <i class="material-icons">stop</i>
+                    </button>
+                </nav>
+            </div>
+        </header>
+        <div class="mdl-layout__drawer">
+            <span class="mdl-layout-title">Choose Module</span>
+            <nav class="mdl-navigation nav-module">
+            </nav>
         </div>
-        <div class="viz">
-            <h4>Visualizer:</h4>
-            <canvas width="512" height="256" id="visualizer"></canvas>
-        </div>
-        <div class="samples">
-            <h4>Samples:</h4>
-            <select class="sample-list" name="sample-list" multiple></select>
-        </div>
-        <div class="controls">
-            <button disabled="disabled" onClick="ModPlayer.play()">Play / Pause</button>
-            <button disabled="disabled" onClick="ModPlayer.stop()">Stop</button>
-        </div>
+        <main class="mdl-layout__content">
+            <div class="page-content">
+                <!-- Wide card with share menu button -->
+                <style>
+                    .demo-card-wide.mdl-card {
+                        width: 512px;
+                        position:relative;
+                    }
+
+                    .demo-card-wide>.mdl-card__title {
+                        color: #fff;
+                        height: 176px;
+                        /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#ffffff+0,f3f3f3+50,ededed+51,ffffff+100;White+Gloss+%232 */
+                        background: #ffffff; /* Old browsers */
+                        background: -moz-linear-gradient(top, #ffffff 0%, #f3f3f3 50%, #ededed 51%, #ffffff 100%); /* FF3.6-15 */
+                        background: -webkit-linear-gradient(top, #ffffff 0%,#f3f3f3 50%,#ededed 51%,#ffffff 100%); /* Chrome10-25,Safari5.1-6 */
+                        background: linear-gradient(to bottom, #ffffff 0%,#f3f3f3 50%,#ededed 51%,#ffffff 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+                    }
+
+                    .demo-card-wide>.mdl-card__menu, .demo-card-wide>.mdl-card__title {
+                        color: #777;
+                    }
+
+                    .demo-card-wide canvas{
+                        position:absolute;
+                        z-index:0;
+                        top:-20px;
+                        left:0;
+                    }
+                </style>
+
+                <div class="demo-card-wide mdl-card mdl-shadow--2dp">
+                    <div class="mdl-card__title">
+                        <canvas width="512" height="128" id="visualizer"></canvas>
+                        <h2 class="mdl-card__title-text title"></h2>
+                    </div>
+                    <div class="mdl-card__supporting-text">
+                        Information here
+                        <div>
+                            <select class="sample-list" name="sample-list" multiple></select>
+                        </div>
+                    </div>
+                    <!-- <div class="mdl-card__actions mdl-card--border">
+                        <a class="mdl-button mdl-button--colored mdl-js-button mdl-js-ripple-effect">
+                            Get Started
+                        </a>
+                    </div> -->
+                    <div class="mdl-card__menu">
+                        <button class="mdl-button mdl-button--icon mdl-js-button mdl-js-ripple-effect">
+                            <i class="material-icons">attachment</i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <footer class="mdl-mini-footer">
+            <div class="mdl-mini-footer__left-section">
+                <ul class="mdl-mini-footer__link-list">
+                    <li><a href="https://github.com/warpdesign/modplayer-js">GitHub</a></li>
+                    <li><a href="https://twitter.com/warpdesign_">Twitter</a></li>
+                    <li><a href="https://warpdesign.fr">Warpdesign</a></li>
+                </ul>
+            </div>
+        </footer>
     </div>
 </body>
 </html>
