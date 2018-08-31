@@ -1,21 +1,3 @@
-// tick()
-// calcTickSpeed()
-// getNextPattern()
-// decodeRow()
-
-// this.filledSamples,
-// this.samplesPerTick
-// this.mixingRate,
-// this.bpm
-// this.speed
-// this.ticks
-// this.row
-// this.position
-// this.positions
-// this.started (message)
-// this.patterns
-// this.channels
-
 const BinUtils = {
     readAscii(buffer, maxLength, offset = 0) {
         const uint8buf = new Uint8Array(buffer);
@@ -43,7 +25,6 @@ const BinUtils = {
 
 class PTModuleProcessor extends AudioWorkletProcessor{
     constructor() {
-        // this.mixingRate = mixingRate;
         // pattern data always starts at offset 1084
         super();
         this.port.onmessage = this.handleMessage.bind(this);
@@ -66,6 +47,11 @@ class PTModuleProcessor extends AudioWorkletProcessor{
             case 'setPlay':
                 if (this.ready) {
                     this.playing = event.data.playing;
+                }
+
+            case 'reset':
+                if (this.ready) {
+                    this.resetValues();
                 }
         }
     }
@@ -186,7 +172,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
 
         for (let i = 0; i < length; ++i) {
             buffers[0][i] = 0.0;
-            // buffers[1][i] = 0.0;
+            buffers[1][i] = 0.0;
 
             let outputChannel = 0;
 
@@ -196,7 +182,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 const channel = this.channels[chan];
                 // select left/right output depending on module channel:
                 // voices 0,3 go to left channel, 1,2 go to right channel
-                // outputChannel = outputChannel ^ (chan & 1);
+                outputChannel = outputChannel ^ (chan & 1);
 
                 // TODO: check that no effect can be applied without a note
                 // otherwise that will have to be moved outside this loop
