@@ -33,7 +33,6 @@
         }
     </style>
     <script type="text/javascript" src="js/utils.js"></script>
-    <script type="text/javascript" src="js/pt.js"></script>
     <script type="text/javascript" src="js/modplayer.js"></script>
     <script type="text/javascript">
     var moduleList = [
@@ -58,9 +57,9 @@
             canvasWidth = canvas.width,
             canvasHeight = canvas.height;
 
-        document.addEventListener('module_loaded', () => {
+        document.addEventListener('moduleLoaded', (event) => {
             console.log('Module loaded!');
-            const samples = ModPlayer.module.samples;
+            const samples = event.samples;
             let str = '';
             for (let i = 0; i < samples.length; ++i) {
                 str += `<option>${samples[i].name}</option>`;
@@ -68,7 +67,7 @@
 
             document.querySelector('.sample-list').innerHTML = str;
 
-            document.querySelector('.title').innerText = ModPlayer.module.name;
+            document.querySelector('.title').innerText = event.title;
 
             document.querySelector('#loader').classList.remove('is-active');
 
@@ -174,8 +173,9 @@
 
         effects.push(drawBars,drawOscillo);
 
-        ModPlayer.init();
-        loadModule(selectedMod, false);
+        ModPlayer.init().then(() => {
+            loadModule(selectedMod, false);
+        });
     }
 
     function togglePlayButton() {
@@ -220,6 +220,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.pink-deep_purple.min.css">
     <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
+    <script src="https://unpkg.com/audioworklet-polyfill/dist/audioworklet-polyfill.js"></script>
 </head>
 <body>
     <!-- Always shows a header, even in smaller screens. -->
