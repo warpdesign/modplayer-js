@@ -173,7 +173,9 @@
 
         effects.push(drawBars,drawOscillo);
 
-        ModPlayer.init().then(() => {
+        ModPlayer.init({
+            canvas: canvas
+        }).then(() => {
             loadModule(selectedMod, false);
         });
     }
@@ -260,7 +262,7 @@
 
                     .demo-card-wide>.mdl-card__title {
                         color: #fff;
-                        height: 176px;
+                        height: 196px;
                         /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#ffffff+0,f3f3f3+50,ededed+51,ffffff+100;White+Gloss+%232 */
                         background: #ffffff; /* Old browsers */
                         background: -moz-linear-gradient(top, #ffffff 0%, #f3f3f3 50%, #ededed 51%, #ffffff 100%); /* FF3.6-15 */
@@ -275,7 +277,7 @@
                     .demo-card-wide canvas{
                         position:absolute;
                         z-index:0;
-                        top:-20px;
+                        top:0;
                         left:0;
                     }
                 </style>
