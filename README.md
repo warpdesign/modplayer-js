@@ -1,5 +1,5 @@
 # modplayer-js
-JavaScript player for SoundTracker/Noisetracker mod files using the webaudio API.
+JavaScript player for SoundTracker/Noisetracker mod files using the webaudio [AudioWorklet](https://developers.google.com/web/updates/2017/12/audio-worklet) API.
 
 ![ModPlayer screenshot](./img/screenshot.png)
 
@@ -22,7 +22,7 @@ ModPlayer JS makes use of the following piece of software:
 
  - The User Interface is built using [Material Design Lite](https://getmdl.io)
  - The [AudioWorklet polyfill](https://github.com/GoogleChromeLabs/audioworklet-polyfill) is used to stay compatible with browsers that do not support it yet
- - Spectrum display is based on [Audio DSP Background](https://github.com/acarabott/audio-dsp-playground) by @Acarabott
+ - Spectrum display is based on [Audio DSP Background](https://github.com/acarabott/audio-dsp-playground) by [@Acarabott](https://github.com/acarabott)
 
 # Module files copyright
 
