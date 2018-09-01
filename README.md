@@ -1,7 +1,7 @@
 # modplayer-js
 JavaScript player for SoundTracker/Noisetracker mod files using the webaudio API.
 
-![ModPlayer screenshot](./img/screenshot.png)]
+![ModPlayer screenshot](./img/screenshot.png)
 
 For a demo, head over [here](http://htmlpreview.github.io/?https://github.com/warpdesign/modplayer-js/blob/master/index.html).
 
@@ -35,7 +35,7 @@ ModPlayer-js includes the following module files:
  - desert_strike: music from [Desert Strike](https://www.youtube.com/watch?v=hcJaph0D7UM) Amiga game by Jason Whitley
  - LotusII.mod: music from [Lotus II](https://www.youtube.com/watch?v=vETonlaTZ4c) game by [Barry Leitch](https://en.wikipedia.org/wiki/Barry_Leitch)
  - projectx.mod: music from [Project-X](https://www.youtube.com/watch?v=gjq-ONi3dZE) Amiga game by [Allister Brimble](https://twitter.com/allisterbrimble)
- - silkworm.mod: music from Silkworm Amiga game by [Barry Leitch](https://en.wikipedia.org/wiki/Barry_Leitch)
+ - silkworm.mod: music from [Silkworm](https://www.youtube.com/watch?v=4wNidIucUuc) Amiga game by [Barry Leitch](https://en.wikipedia.org/wiki/Barry_Leitch)
 
 # Module background
 
