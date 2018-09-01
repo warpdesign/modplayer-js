@@ -7,9 +7,14 @@ const ModPlayer = {
     playing: false,
     bufferFull: false,
     ready: true,
-    init() {
-        this.createContext();
-        this.module = new PTModule(this.mixingRate);
+    loaded: false,
+    init(options) {
+        this.canvas = options.canvas;
+        this.ctx = this.canvas.getContext('2d');
+        this.canvasWidth = (this.canvas.width) / 2;
+        this.canvasHeight = this.canvas.height;
+
+        return this.createContext();
     },
 
     async loadModule(url) {
@@ -19,6 +24,7 @@ const ModPlayer = {
             this.ready = false;
         }
 
+        this.loaded = false;
         this.pause();
 
         if (!this.context) {
@@ -26,11 +32,12 @@ const ModPlayer = {
         }
 
         const buffer = await this.loadBinary(url);
-        this.module.decodeData(buffer);
+        this.postMessage({
+            message: 'loadModule',
+            buffer: buffer
+        });
 
         this.ready = true;
-
-        document.dispatchEvent(new Event('module_loaded'));
     },
 
     async loadBinary(url) {
@@ -40,62 +47,64 @@ const ModPlayer = {
         return buffer;
     },
 
-    createContext({ bufferlen = 4096 } = {}) {
+    createContext() {
         console.log('Creating audio context...');
         this.context = new (window.AudioContext || window.webkitAudioContext)();
 
         this.mixingRate = this.context.sampleRate;
 
-        if (typeof this.context.createJavaScriptNode === 'function') {
-            this.mixerNode = this.context.createJavaScriptNode(bufferlen, 1, 2);
-        } else {
-            this.mixerNode = this.context.createScriptProcessor(bufferlen, 1, 2);
-        }
+        return this.context.audioWorklet.addModule('js/mod-processor.js').then(() => {
+            this.workletNode = new AudioWorkletNode(this.context, 'mod-processor', {
+                outputChannelCount:[2]
+            });
+            this.workletNode.port.onmessage = this.handleMessage.bind(this);
+            this.postMessage({
+                message: 'init',
+                mixingRate: this.mixingRate
+            });
+            this.workletNode.port.start();
+            this.workletNode.connect(this.context.destination);
 
-        // visualize stuff
-        this.analyserNode = this.context.createAnalyser();
-        this.amplitudeArray = new Uint8Array(this.analyserNode.frequencyBinCount);
-        this.analyserNode.minDecibels = -90;
-        this.analyserNode.maxDecibels = -10;
+            // split channels and connect each channel's output
+            // to a separate analyzer
+            this.analysisSplitter = this.context.createChannelSplitter(2);
+            this.workletNode.connect(this.analysisSplitter);
 
-        if (this.mixerNode) {
-            this.mixerNode.onaudioprocess = (ape) => this.mix(ape);
-            this.mixerNode.connect(this.context.destination);
-            this.mixerNode.connect(this.analyserNode);
+            this.analyserLeft = this.context.createAnalyser();
+
+            this.analyserLeft.fftSize = Math.pow(2, 11);
+            this.analyserLeft.minDecibels = -96;
+            this.analyserLeft.maxDecibels = 0;
+            this.analyserLeft.smoothingTimeConstant = 0.85;
+
+            this.analyserRight = this.context.createAnalyser();
+            this.analyserRight.fftSize = Math.pow(2, 11);
+            this.analyserRight.minDecibels = -96;
+            this.analyserRight.maxDecibels = 0;
+            this.analyserRight.smoothingTimeConstant = 0.85;
+
+            this.analysisSplitter.connect(this.analyserLeft, 0);
+            this.analysisSplitter.connect(this.analyserRight, 1);
+        });
+    },
+
+    handleMessage(message) {
+        switch (message.data.message) {
+            case 'moduleLoaded':
+                this.loaded = true;
+                const event = new Event('moduleLoaded');
+                event.data = message.data.data;
+                document.dispatchEvent(event);
+                break;
         }
     },
 
-    mix(audioProcessingEvent) {
-        const buffers = [
-            audioProcessingEvent.outputBuffer.getChannelData(0),
-            audioProcessingEvent.outputBuffer.getChannelData(1)
-        ];
-
-        if (this.playing && this.module) {
-            this.bufferFull = true;
-            this.module.mix(buffers, audioProcessingEvent.outputBuffer.length);
-        } else if (this.bufferFull) {
-            // attempt to empty buffer so that sound doesn't "crack" when resuming playback
-            this.emptyOutputBuffer(buffers, audioProcessingEvent.outputBuffer.length);
-        }
-
-        this.analyserNode.getByteTimeDomainData(this.amplitudeArray);
-        if (this.playing) {
-            const event = new Event('analyzer_ready');
-            event.data = this.amplitudeArray;
-            document.dispatchEvent(event);
-        }
-    },
-
-    emptyOutputBuffer(buffers, length) {
-        for (let i = 0; i < length; ++i) {
-            buffers[0][i] = 0.0;
-            buffers[1][i] = 0.0;
-        }
+    postMessage(message) {
+        this.workletNode.port.postMessage(message);
     },
 
     play() {
-        if (this.module && this.module.ready) {
+        if (this.loaded) {
             // probably an iOS device: attempt to unlock webaudio
             if (this.context.state === 'suspended' && 'ontouchstart' in window) {
                 this.context.resume();
@@ -107,21 +116,111 @@ const ModPlayer = {
             if (!this.playing) {
                 this.pause();
             }
+
+            this.sendPlayingStatus();
+
+            this.render();
         } else {
-            console.log('Module not ready');
+            console.log('No module loaded');
         }
     },
 
     stop() {
         console.log('Stopping playback');
         this.pause();
-        if (this.module && this.module.ready) {
-            this.module.resetValues();
+        if (this.ready) {
+            this.postMessage({
+                message: 'reset'
+            });
         }
     },
 
     pause() {
         console.log('Pausing module...');
         this.playing = false;
+        this.sendPlayingStatus();
+    },
+
+    sendPlayingStatus() {
+        this.postMessage({
+            message: 'setPlay',
+            playing: this.playing
+        });
+    },
+
+    render() {
+        if (this.playing) {
+            this.renderScope();
+            requestAnimationFrame(this.render.bind(this));
+        }
+    },
+
+    /**
+     * render adapted from https://github.com/acarabott/audio-dsp-playground (MIT Licence)
+     */
+    renderScope() {
+        const toRender = [
+            {
+                label: "Left",
+                analyser: this.analyserLeft,
+                style: "rgba(53, 233, 255, 1)",
+                edgeThreshold: 0,
+                active: true
+            },
+            {
+                label: "Right",
+                analyser: this.analyserRight,
+                style: "rgba(53, 233, 255, 1)",
+                edgeThreshold: 0,
+                active: true
+            }];
+
+        this.ctx.fillStyle = "transparent";
+        this.ctx.clearRect(0, 0, this.canvasWidth * 2, this.canvasHeight);
+
+        toRender.forEach(({ analyser, style = "rgb(43, 156, 212)", edgeThreshold = 0 }, i) => {
+            if (analyser === undefined) { return; }
+
+            const timeData = new Float32Array(analyser.frequencyBinCount);
+            let risingEdge = 0;
+
+            analyser.getFloatTimeDomainData(timeData);
+
+            this.ctx.lineWidth = 2;
+            this.ctx.strokeStyle = style;
+
+            this.ctx.beginPath();
+
+            while (timeData[risingEdge] > 0 &&
+                risingEdge <= this.canvasWidth &&
+                risingEdge < timeData.length) {
+                risingEdge++;
+            }
+
+            if (risingEdge >= this.canvasWidth) { risingEdge = 0; }
+
+
+            while (timeData[risingEdge] < edgeThreshold &&
+                risingEdge <= this.canvasWidth &&
+                risingEdge < timeData.length) {
+                risingEdge++;
+            }
+
+            if (risingEdge >= this.canvasWidth) { risingEdge = 0; }
+
+            for (let x = risingEdge; x < timeData.length && x - risingEdge < this.canvasWidth; x++) {
+                const y = this.canvasHeight - (((timeData[x] + 1) / 2) * this.canvasHeight);
+                this.ctx.lineTo(x - risingEdge + i * this.canvasWidth, y);
+            }
+
+            this.ctx.stroke();
+        });
+
+        // L/R
+        this.ctx.fillStyle = "rgba(255,255,255,0.7)";
+        this.ctx.font = "11px Verdana";
+        this.ctx.textAlign = "left";
+        this.ctx.fillText("L", 5, 15);
+        this.ctx.fillText("R", 496, 15);
     }
 }

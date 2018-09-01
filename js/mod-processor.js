@@ -1,11 +1,85 @@
-var tickReached = 0;
+const BinUtils = {
+    readAscii(buffer, maxLength, offset = 0) {
+        const uint8buf = new Uint8Array(buffer);
+        // we could have used the new TextDecoder interface, if only
+        // it was available in webkit/Safari...
+        let str = '',
+            eof = false;
 
-class PTModule {
-    constructor(mixingRate) {
-        this.mixingRate = mixingRate;
+        for (let i = 0; i < maxLength, !eof; ++i) {
+            const char = uint8buf[offset + i];
+            eof = char === 0;
+            if (!eof) {
+                str += String.fromCharCode(char);
+            }
+        }
+
+        return str;
+    },
+    readWord(buffer, offset = 0, littleEndian = false) {
+        const view = new DataView(buffer);
+
+        return view.getUint16(offset, littleEndian);
+    }
+}
+
+class PTModuleProcessor extends AudioWorkletProcessor{
+    constructor() {
         // pattern data always starts at offset 1084
+        super();
+        this.port.onmessage = this.handleMessage.bind(this);
         this.patternOffset = 1084;
         this.patternLength = 1024;
+    }
+
+    handleMessage(event) {
+        console.log('[Processor:Received] "' + event.data.message +
+            '" (' + event.data.timeStamp + ')');
+        switch (event.data.message) {
+            case 'init':
+                this.mixingRate = event.data.mixingRate;
+                break;
+
+            case 'loadModule':
+                this.prepareModule(event.data.buffer);
+                break;
+
+            case 'setPlay':
+                if (this.ready) {
+                    this.playing = event.data.playing;
+                }
+                break;
+
+            case 'reset':
+                if (this.ready) {
+                    this.resetValues();
+                }
+        }
+    }
+
+    postMessage(message) {
+        this.port.postMessage(message);
+    }
+
+    process(inputs, outputs, params) {
+        if (this.ready && this.playing) {
+            this.mix(outputs[0]);
+        } else {
+            this.emptyOutputBuffer(outputs[0]);
+        }
+
+        return true;
+    }
+
+    emptyOutputBuffer(buffers) {
+        const length = buffers[0].length,
+            chans = buffers.length;
+
+        for (let i = 0; i < length; ++i) {
+            for (let chan = 0; chan < chans; ++chan) {
+                buffers[chan][i] = 0.0;
+            }
+        }
     }
 
     init() {
@@ -30,6 +104,9 @@ class PTModule {
         this.buffer = null;
         this.started = false;
         this.ready = false;
+
+        // new for audioworklet
+        this.playing = false;
     }
 
     /**
@@ -46,7 +123,7 @@ class PTModule {
         this.decodeRow();
     }
 
-    decodeData(buffer) {
+    prepareModule(buffer) {
         console.log('Decoding module data...');
         this.ready = false;
         this.init();
@@ -59,6 +136,17 @@ class PTModule {
         this.calcTickSpeed();
         this.resetValues();
         this.ready = true;
+
+        this.postMessage({
+            message: 'moduleLoaded',
+            data: {
+                samples: this.samples,
+                title: this.name,
+                length: this.buffer.byteLength,
+                positions: this.positions.length,
+                patterns: this.patterns.length
+            }
+        });
     }
 
     detectMaxSamples() {
@@ -85,7 +173,9 @@ class PTModule {
      *
      * This method is called each time the buffer should be filled with data
      */
-    mix(buffers, length) {
+    mix(buffers) {
+        const length = buffers[0].length;
+
         for (let i = 0; i < length; ++i) {
             buffers[0][i] = 0.0;
             buffers[1][i] = 0.0;
@@ -242,7 +332,7 @@ class PTModule {
         // instruments data starts at offset 20
         let offset = 20;
         const uint8buffer = new Uint8Array(this.buffer),
-           headerLength = 30;
+            headerLength = 30;
 
         for (let i = 0; i < this.maxSamples; ++i) {
             // if (i === 16)
@@ -256,7 +346,7 @@ class PTModule {
                 repeatLength: BinUtils.readWord(this.buffer, offset + 28) * 2,
                 data: null
             };
-6
+            6
             // Existing mod players seem to play a sample only once if repeatLength is set to 2
             if (sample.repeatLength === 2) {
                 sample.repeatLength = 0;
@@ -274,11 +364,11 @@ class PTModule {
     }
 
     getPatternData() {
-       // pattern data always starts at offset 950
-       const uint8buffer = new Uint8Array(this.buffer, 950);
-       this.songLength = uint8buffer[0];
-       let position = 2;
-       let max = 0;
+        // pattern data always starts at offset 950
+        const uint8buffer = new Uint8Array(this.buffer, 950);
+        this.songLength = uint8buffer[0];
+        let position = 2;
+        let max = 0;
 
         for (let i = 0; i < this.songLength; ++i) {
             const pos = uint8buffer[position + i];
@@ -316,6 +406,8 @@ class PTModule {
         }
     }
 }
+
+registerProcessor('mod-processor', PTModuleProcessor);
 
 const Effects = {
     /**
