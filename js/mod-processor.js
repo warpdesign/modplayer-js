@@ -48,6 +48,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 if (this.ready) {
                     this.playing = event.data.playing;
                 }
+                break;
 
             case 'reset':
                 if (this.ready) {
@@ -241,7 +242,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                     this.getNextPattern(true);
                 }
 
-                console.log('** next row !', this.row.toString(16));
+                // console.log('** next row !', this.row.toString(16));
 
                 this.decodeRow();
             }
