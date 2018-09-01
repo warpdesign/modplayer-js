@@ -104,8 +104,7 @@ const ModPlayer = {
             case 'moduleLoaded':
                 this.loaded = true;
                 const event = new Event('moduleLoaded');
-                event.samples = message.data.samples;
-                event.title = message.data.title;
+                event.data = message.data.data;
                 document.dispatchEvent(event);
                 break;
         }
@@ -187,8 +186,8 @@ const ModPlayer = {
             }];
 
         // grid
-        this.ctx.fillStyle = "black";
-        this.ctx.fillRect(0, 0, this.canvasWidth * 2, this.canvasHeight);
+        this.ctx.fillStyle = "transparent";
+        this.ctx.clearRect(0, 0, this.canvasWidth * 2, this.canvasHeight);
         // this.ctx.lineWidth = 1;
         // this.ctx.strokeStyle = "rgba(200, 200, 200, 0.5)";
         // this.ctx.fillStyle = "rgba(200, 200, 200, 0.5)";
@@ -282,7 +281,7 @@ const ModPlayer = {
 
         analyser.getByteFrequencyData(freqData);
 
-        this.ctx.fillStyle = "white";
+        this.ctx.fillStyle = "transparent";
         this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
 
         this.ctx.lineWidth = 2;

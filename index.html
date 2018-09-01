@@ -3,35 +3,6 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta charset="UTF-8">
-    <style type="text/css">
-        /* mdl */
-        .page-content{
-            display:flex;
-            justify-content:center;
-            padding:40px;
-        }
-
-        a.mdl-navigation__link.selected:before {
-            font-family: 'Material Icons';
-            font-weight: 400;
-            font-style: normal;
-            font-size: 24px;
-            line-height: 24px;
-            letter-spacing: normal;
-            text-transform: none;
-            display: inline-block;
-            word-wrap: normal;
-            content: 'volume_up';
-            height: 18px;
-            color:black;
-            position: absolute;
-            left: 11px;
-        }
-
-        .mdl-layout__drawer .mdl-navigation .mdl-navigation__link.selected {
-            padding-left: 40px;
-        }
-    </style>
     <script type="text/javascript" src="js/utils.js"></script>
     <script type="text/javascript" src="js/modplayer.js"></script>
     <script type="text/javascript">
@@ -49,25 +20,47 @@
     selectedMod = 0,
     prefix = 'audio/';
 
+    function Toast(id) {
+        this.container = document.getElementById(id);
+    }
+
+    Toast.prototype = {
+        show(message, timeout = 2750) {
+            this.container.MaterialSnackbar.showSnackbar({
+                timeout: timeout,
+                message: message
+            });
+        }
+    }
+
     window.onload = function() {
         var canvas = document.getElementById('visualizer'),
             effect = 1,
             effects = [],
             ctx = canvas.getContext('2d'),
             canvasWidth = canvas.width,
-            canvasHeight = canvas.height;
+            canvasHeight = canvas.height,
+            toast = new Toast('info-snackbar');
 
         document.addEventListener('moduleLoaded', (event) => {
-            console.log('Module loaded!');
-            const samples = event.samples;
+            toast.show(`Module loaded: ${moduleList[selectedMod]}`);
+
+            const samples = event.data.samples;
             let str = '';
             for (let i = 0; i < samples.length; ++i) {
-                str += `<option>${samples[i].name}</option>`;
+                if (samples[i].name.length) {
+                    str += `<li>${samples[i].name}</li>`;
+                }
             }
 
             document.querySelector('.sample-list').innerHTML = str;
 
-            document.querySelector('.title').innerText = event.title;
+            document.querySelector('.song-title').innerText = event.data.title;
+            document.querySelector('.title').innerText = moduleList[selectedMod];
+            document.querySelector('.song-length').innerText = event.data.length;
+            document.querySelector('.song-samples').innerText = event.data.samples.length;
+            document.querySelector('.song-positions').innerText = event.data.positions;
+            document.querySelector('.song-patterns').innerText = event.data.patterns;
 
             document.querySelector('#loader').classList.remove('is-active');
 
@@ -93,7 +86,7 @@
 
         componentHandler.upgradeDom();
 
-        // document.querySelectorAll('.nav-module').innerHTML += '<a class="mdl-navigation__link" href="">Link</a>';
+        document.addEventListener('keyup', (e) => e.keyCode === 32 && togglePlay());
 
         document.addEventListener('analyzer_ready', (event) => {
             requestAnimationFrame(() => {
@@ -197,6 +190,8 @@
     function loadModule(moduleIndex, hideDrawer = true) {
         var moduleName = moduleList[moduleIndex];
 
+        selectedMod = moduleIndex;
+
         if (ModPlayer.ready && moduleName) {
             // I guess that's the best way to programmatically hide the drawer
             // since MDL does not provide any API to do that
@@ -220,7 +215,48 @@
     </script>
 
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-    <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.pink-deep_purple.min.css">
+    <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.indigo-deep_purple.min.css">
+    <style type="text/css">
+        /* mdl */
+        .page-content {
+            display: flex;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        a.mdl-navigation__link.selected:before {
+            font-family: 'Material Icons';
+            font-weight: 400;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 24px;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            word-wrap: normal;
+            content: 'volume_up';
+            height: 18px;
+            color: black;
+            position: absolute;
+            left: 11px;
+        }
+
+        .mdl-mini-footer {
+            justify-content: center;
+        }
+
+        .mdl-card__title h2 {
+            color: black;
+        }
+
+        .mdl-layout__drawer .mdl-navigation .mdl-navigation__link.selected {
+            padding-left: 40px;
+        }
+
+        .mdl-mini-footer--link-list li, .mdl-mini-footer__link-list li{
+            margin-right: 32px;
+        }
+    </style>
     <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
     <script src="js/audioworklet-polyfill.js"></script>
 </head>
@@ -263,11 +299,11 @@
                     .demo-card-wide>.mdl-card__title {
                         color: #fff;
                         height: 196px;
-                        /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#ffffff+0,f3f3f3+50,ededed+51,ffffff+100;White+Gloss+%232 */
-                        background: #ffffff; /* Old browsers */
-                        background: -moz-linear-gradient(top, #ffffff 0%, #f3f3f3 50%, #ededed 51%, #ffffff 100%); /* FF3.6-15 */
-                        background: -webkit-linear-gradient(top, #ffffff 0%,#f3f3f3 50%,#ededed 51%,#ffffff 100%); /* Chrome10-25,Safari5.1-6 */
-                        background: linear-gradient(to bottom, #ffffff 0%,#f3f3f3 50%,#ededed 51%,#ffffff 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+                        /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#2c2c2c+1,000000+9,2b2b2b+50,bababa+54,ffffff+100 */
+                        background: rgb(44,44,44); /* Old browsers */
+                        background: -moz-linear-gradient(top, rgba(44,44,44,1) 1%, rgba(0,0,0,1) 9%, rgba(43,43,43,1) 50%, rgba(186,186,186,1) 54%, rgba(255,255,255,1) 100%); /* FF3.6-15 */
+                        background: -webkit-linear-gradient(top, rgba(44,44,44,1) 1%,rgba(0,0,0,1) 9%,rgba(43,43,43,1) 50%,rgba(186,186,186,1) 54%,rgba(255,255,255,1) 100%); /* Chrome10-25,Safari5.1-6 */
+                        background: linear-gradient(to bottom, rgba(44,44,44,1) 1%,rgba(0,0,0,1) 9%,rgba(43,43,43,1) 50%,rgba(186,186,186,1) 54%,rgba(255,255,255,1) 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
                     }
 
                     .demo-card-wide>.mdl-card__menu, .demo-card-wide>.mdl-card__title {
@@ -288,9 +324,25 @@
                         <h2 class="mdl-card__title-text"><i class="material-icons">audiotrack</i><span class="title"></span></h2>
                     </div>
                     <div class="mdl-card__supporting-text">
-                        Information here
-                        <div>
-                            <select class="sample-list" name="sample-list" multiple></select>
+                        <div class="mdl-tabs mdl-js-tabs mdl-js-ripple-effect">
+                            <div class="mdl-tabs__tab-bar">
+                                <a href="#modinfo-panel" class="mdl-tabs__tab is-active">Module Info</a>
+                                <a href="#samples-panel" class="mdl-tabs__tab">Samples</a>
+                            </div>
+
+                            <div class="mdl-tabs__panel is-active" id="modinfo-panel">
+                                <ul>
+                                    <li>Title: <span class="song-title"></span></li>
+                                    <li>Length: <span class="song-length"></span></li>
+                                    <li>Samples: <span class="song-samples"></span></li>
+                                    <li>Positions: <span class="song-positions"></span></li>
+                                    <li>Patterns: <span class="song-patterns"></span></li>
+                                </ul>
+                            </div>
+                            <div class="mdl-tabs__panel" id="samples-panel">
+                                <ul class="sample-list">
+                                </ul>
+                            </div>
                         </div>
                     </div>
                     <!-- <div class="mdl-card__actions mdl-card--border">
@@ -311,10 +363,14 @@
                 <ul class="mdl-mini-footer__link-list">
                     <li><a href="https://github.com/warpdesign/modplayer-js">GitHub</a></li>
                     <li><a href="https://twitter.com/warpdesign_">Twitter</a></li>
-                    <li><a href="https://warpdesign.fr">Warpdesign</a></li>
+                    <li><a href="https://warpdesign.fr">Warpdesign ❤ WebAudio</a></li>
                 </ul>
             </div>
         </footer>
+        <div id="info-snackbar" class="mdl-js-snackbar mdl-snackbar">
+            <div class="mdl-snackbar__text content"></div>
+            <button class="mdl-snackbar__action" type="button"></button>
+        </div>
     </div>
 </body>
 </html>

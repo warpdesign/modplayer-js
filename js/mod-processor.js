@@ -138,8 +138,13 @@ class PTModuleProcessor extends AudioWorkletProcessor{
 
         this.postMessage({
             message: 'moduleLoaded',
-            samples: this.samples,
-            title: this.name
+            data: {
+                samples: this.samples,
+                title: this.name,
+                length: this.buffer.byteLength,
+                positions: this.positions.length,
+                patterns: this.patterns.length
+            }
         });
     }
 
