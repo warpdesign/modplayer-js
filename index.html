@@ -17,7 +17,8 @@
         {file: 'silkworm.mod', author: 'Barry Leitch'}
     ],
     selectedMod = 0,
-    prefix = 'audio/';
+    prefix = 'audio/',
+    toast;
 
     function Toast(id) {
         this.container = document.getElementById(id);
@@ -38,8 +39,9 @@
             effects = [],
             ctx = canvas.getContext('2d'),
             canvasWidth = canvas.width,
-            canvasHeight = canvas.height,
-            toast = new Toast('info-snackbar');
+            canvasHeight = canvas.height;
+
+        toast = new Toast('info-snackbar');
 
         document.addEventListener('moduleLoaded', (event) => {
             toast.show(`Module loaded: ${moduleList[selectedMod].file}`);
@@ -170,6 +172,8 @@
             canvas: canvas
         }).then(() => {
             loadModule(selectedMod, false);
+        }).catch((err) => {
+            toast.show(`Error loading module: ${err}`);
         });
     }
 
@@ -208,7 +212,10 @@
             document.querySelector('a.mdl-navigation__link.selected').classList.toggle('selected');
             document.querySelector(`a.mdl-navigation__link.mod_${moduleIndex}`).classList.add('selected');
 
-            ModPlayer.loadModule(prefix + moduleName);
+            ModPlayer.loadModule(prefix + moduleName)
+            .catch(err => {
+                toast.show(`Error loading module: ${err}`);
+            });
         }
     }
 
