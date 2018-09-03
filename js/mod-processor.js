@@ -126,6 +126,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         this.filledSamples = 0;
         this.speed = 6;
         this.newTick = true;
+        this.rowJump = -1;
         this.decodeRow();
     }
 
@@ -234,6 +235,14 @@ class PTModuleProcessor extends AudioWorkletProcessor{
      * and sound playback rate
      */
     tick() {
+        if (this.rowJump > -1) {
+            // TODO: check bounds ?
+            this.row = this.rowJump;
+            this.decodeRow();
+            this.rowJump = -1;
+            return;
+        }
+
         if (this.filledSamples > this.samplesPerTick) {
             this.newTick = true;
             this.ticks++;
@@ -304,10 +313,6 @@ class PTModuleProcessor extends AudioWorkletProcessor{
             //     note.cmd = this.channels[i].cmd;
             // }
 
-            // if (this.row === 1) {
-            //     debugger;
-            // }
-
             if (note.period) {
                 // if a period was selected but no instrument set
                 // use the previous one
@@ -333,8 +338,11 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 }
                 // effects can be applied again
                 this.channels[i].done = false;
-                this.channels[i].cmd = note.cmd;
-                this.channels[i].data = note.data;
+                // avoid endless loop
+                if (this.channels[i].cmd !== 0xD) {
+                    this.channels[i].cmd = note.cmd;
+                    this.channels[i].data = note.data;
+                }
             }
         }
     }
@@ -520,7 +528,7 @@ const Effects = {
      * Position Jump
      */
     0xB(Module, channel) {
-        if (channel.data >= 0 && channel.data < this.patterns.length - 1) {
+        if (channel.data >= 0 && channel.data <= this.patterns.length - 1) {
             // this.position = channel.data;
             debugger;
         }
@@ -536,6 +544,37 @@ const Effects = {
         }
         // execute effect only once
         channel.done = true;
+    },
+    /**
+     * Row jump
+     */
+    0xD(Module, channel) {
+        if (!Module.ticks) {
+            Module.rowJump = ((channel.data & 0xf0) >> 4) * 10 + (channel.data & 0x0f);
+            channel.done = true;
+        }
+    },
+    /**
+     * Loop pattern
+     */
+    0xE6(Module, channel) {
+        debugger;
+        if (channel.data === 0) {
+            if (channel.loopCount) {
+                channel.loopStart = Module.row;
+                channel.loopCount--;
+                // last loop
+                if (!channel.loopCount) {
+                    channel.loopDone = true;
+                }
+            }
+        } else if (!channel.loopDone) {
+            if (!channel.loopCount) {
+                channel.loopCount = channel.data;
+            }
+
+            channel.rowJump = channel.loopStart;
+        }
     },
     /**
      * Retrigger note every xxxx ticks
