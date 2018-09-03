@@ -3,18 +3,24 @@ JavaScript player for SoundTracker/Noisetracker mod files using the webaudio [Au
 
 ![ModPlayer screenshot](./img/screenshot.png)
 
-For a demo, head over [here](http://htmlpreview.github.io/?https://github.com/warpdesign/modplayer-js/blob/master/index.html).
+For a demo, head over [here](https://warpdesign.github.io/modplayer-js/).
 
 # What's implemented
 
 Amiga 4 channel Sountracker/Noisetracker mod files with 4 channels and 15-31 instruments are supported.
 
-Most effects like `vibrato`, `arpeggio` aren't supported yet but lot's of files use very little effects so work already correctly.
+The following note effects are supported:
 
-Only these effects are supported:
+ - Slide up (0x1)
+ - Slide down (0x2)
+ - Portamento / slide to note (0x3)
+ - Sample offset (0x9)
+ - Volume slide (0xA)
+ - Channel volume (0xC)
+ - Row jump (0xD)
+ - Retrigger note (0xE9)
+ - Set speed (0xF)
 
- - set speed (inc. bpm variant)
- - set volume
 
 # Dependencies
 
