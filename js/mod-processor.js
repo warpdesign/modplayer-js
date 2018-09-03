@@ -23,6 +23,11 @@ const BinUtils = {
     }
 }
 
+const PaulaPeriods = new Float32Array([
+    856, 808, 762, 720, 678, 640, 604, 570, 538, 508, 480, 453,
+    428, 404, 381, 360, 339, 320, 302, 285, 269, 254, 240, 226,
+    214, 202, 190, 180, 170, 160, 151, 143, 135, 127, 120, 113]);
+
 class PTModuleProcessor extends AudioWorkletProcessor{
     constructor() {
         // pattern data always starts at offset 1084
@@ -101,6 +106,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         this.samplesPerTick = 0;
         this.filledSamples = 0;
         this.ticks = 0;
+        this.newTick = true;
         this.buffer = null;
         this.started = false;
         this.ready = false;
@@ -119,7 +125,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         this.ticks = 0;
         this.filledSamples = 0;
         this.speed = 6;
-        this.newRow = false;
+        this.newTick = true;
         this.decodeRow();
     }
 
@@ -192,9 +198,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
 
                 // TODO: check that no effect can be applied without a note
                 // otherwise that will have to be moved outside this loop
-                // if (this.newRow && chan === 1 && this.row === 22 && this.position === 4)
-                //     debugger;
-                if (this.newRow && channel.cmd && !channel.done) {
+                if (this.newTick && channel.cmd && !channel.done) {
                     this.executeEffect(channel);
                 }
 
@@ -220,7 +224,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 }
             }
             this.filledSamples++;
-            this.newRow = false;
+            this.newTick = false;
         }
     }
 
@@ -231,10 +235,10 @@ class PTModuleProcessor extends AudioWorkletProcessor{
      */
     tick() {
         if (this.filledSamples > this.samplesPerTick) {
+            this.newTick = true;
             this.ticks++;
             this.filledSamples = 0;
-            if (this.ticks >= this.speed) {
-                // TO DO: goto next row
+            if (this.ticks > this.speed - 1) {
                 this.ticks = 0;
                 this.row++;
                 if (this.row > 63) {
@@ -254,12 +258,15 @@ class PTModuleProcessor extends AudioWorkletProcessor{
 
         // Loop ? Use loop parameter
         if (this.position == this.positions.length - 1) {
+            debugger;
             console.log('Warning: last position reached, going back to 0');
             this.position = 0;
         } else {
-            console.log('// position', this.position, this.pattern);
+            // console.log('// position', this.position, this.pattern);
         }
         this.pattern = this.positions[this.position];
+
+        console.log('** position', this.position, 'pattern:', this.pattern);
     }
 
     decodeRow() {
@@ -278,6 +285,8 @@ class PTModuleProcessor extends AudioWorkletProcessor{
             const note = {
                 sample: (data[offset] & 0xF0 | data[2 + offset] >> 4) - 1,
                 period: (data[offset] & 0x0F) << 8 | data[1 + offset],
+                prevPeriod: this.channels[i] && this.channels[i].period || 0,
+                prevData: this.channels[i] && this.channels[i].data,
                 cmd: data[2 + offset] & 0xF,
                 data: data[3 + offset],
                 samplePos: 0,
@@ -285,16 +294,27 @@ class PTModuleProcessor extends AudioWorkletProcessor{
             };
 
             // extended command
-            if (note.command === 0xE) {
-                note.extcmd = note.data >> 4;
+            if (note.cmd === 0xE) {
+                // note.extcmd = note.data >> 4;
+                note.cmd = 0xE0 + (note.data >> 4);
                 note.data &= 0xF;
             }
+
+            // if (!note.cmd && this.channels[i] && this.channels[i].cmd && !this.channels[i].done) {
+            //     note.cmd = this.channels[i].cmd;
+            // }
+
+            // if (this.row === 1) {
+            //     debugger;
+            // }
 
             if (note.period) {
                 // if a period was selected but no instrument set
                 // use the previous one
                 if (note.sample === -1) {
                     note.sample = this.channels[i].sample;
+                    // use previous volume
+                    note.volume = this.channels[i].volume;
                 } else {
                     // calculate channel volume once per row only if new sample
                     // so that effect volume is applied during the whole row
@@ -304,6 +324,8 @@ class PTModuleProcessor extends AudioWorkletProcessor{
             } else if (!this.channels[i]) {
                 // empty note as first element
                 this.channels[i] = note;
+                // Is the default volume set to 64 ??
+                note.volume = 64;
             } else {
                 // sample selected but no period
                 if (note.sample > -1) {
@@ -315,13 +337,13 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 this.channels[i].data = note.data;
             }
         }
-        this.newRow = true;
     }
 
     executeEffect(channel) {
         try {
             Effects[channel.cmd](this, channel);
         } catch (err) {
+            debugger;
             console.warn(`effect not implemented: ${channel.cmd.toString(16).padStart(2, '0')}/${channel.data.toString(16).padStart(2, '0')}`);
         }
     }
@@ -346,7 +368,11 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 repeatLength: BinUtils.readWord(this.buffer, offset + 28) * 2,
                 data: null
             };
-            6
+
+            if (sample.finetune) {
+                debugger;
+            }
+
             // Existing mod players seem to play a sample only once if repeatLength is set to 2
             if (sample.repeatLength === 2) {
                 sample.repeatLength = 0;
@@ -411,6 +437,108 @@ registerProcessor('mod-processor', PTModuleProcessor);
 
 const Effects = {
     /**
+     * Slide up
+     */
+    0x1(Module, channel) {
+        if (Module.ticks) {
+            channel.period -= channel.data;
+
+            if (channel.period < 113) {
+                channel.period = 113;
+            }
+        }
+    },
+    /**
+     * Slide down
+     */
+    0x2(Module, channel) {
+        if (Module.ticks) {
+            channel.period += channel.data;
+
+            if (channel.period > 856) {
+                channel.period = 856;
+            }
+        }
+    },
+    /**
+     * Portamento (slide to note)
+     */
+    0x3(Module, channel) {
+        // zero tick: init effect
+        if (!Module.ticks) {
+            channel.slideTo = channel.period;
+            channel.period = channel.prevPeriod;
+        } else {
+            if (channel.period < channel.slideTo) {
+                channel.period += channel.data;
+                if (channel.period > channel.slideTo) {
+                    channel.period = channel.slideto;
+                }
+            } else if (channel.period > channel.slideTo) {
+                channel.period -= channel.data;
+                if (channel.period < channel.slideTo) {
+                    channel.period = channel.slideTo;
+                }
+            }
+        }
+    },
+    /**
+     * Volume slide: happens every non-zero tick
+     */
+    0xA(Module, channel) {
+        // do not execute effect on tick 0
+        if (Module.ticks) {
+            let x = channel.data & 0xF0,
+                y = channel.data & 0xF;
+
+            if (!y) {
+                console.log('volume slide', x);
+                channel.volume += x;
+            } else if (!x) {
+                console.log('volume slide', -y);
+                channel.volume -= y;
+            }
+
+            if (channel.volume > 64) {
+                channel.volume = 64;
+            } else if (channel.volume < 0) {
+                channel.volume = 0;
+            }
+        }
+    },
+    /**
+     * Position Jump
+     */
+    0xB(Module, channel) {
+        if (channel.data >= 0 && channel.data < this.patterns.length - 1) {
+            // this.position = channel.data;
+            debugger;
+        }
+    },
+    /**
+      * Set channel volume
+      */
+    0xC(Module, channel) {
+        console.log('changing volume to', channel.data);
+        channel.volume = channel.data;
+        if (channel.volume > 64) {
+            channel.volume = 64;
+        }
+        // execute effect only once
+        channel.done = true;
+    },
+    /**
+     * Retrigger note every xxxx ticks
+     */
+    0xE9(Module, channel) {
+        if (!((Module.ticks + 1) % channel.data)) {
+            console.log('retriggering note!', Module.ticks + 1);
+            // should we use repeat pos (if specified) instead ?)
+            channel.samplePos = 0;
+            channel.off = false;
+        }
+    },
+    /**
      *
      * Change playback speed
      */
@@ -421,15 +549,7 @@ const Effects = {
             Module.bpm = channel.data;
             this.calcTickSpeed();
         }
-        channel.done = true;
-    },
-
-    /**
-     * Set channel volume
-     */
-    0xC(Module, channel) {
-        console.log('changing volume to', channel.data);
-        channel.volume = channel.data;
+        // execute effect only once
         channel.done = true;
     }
 }
