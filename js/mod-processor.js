@@ -483,6 +483,16 @@ const Effects = {
         }
     },
     /**
+     * set sample startOffset
+     */
+    0x9(Module, channel) {
+        if (!Module.ticks) {
+            channel.samplePos = channel.data * 256;
+            // does it happen on next line ?
+            channel.done = true;
+        }
+    },
+    /**
      * Volume slide: happens every non-zero tick
      */
     0xA(Module, channel) {
