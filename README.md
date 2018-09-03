@@ -19,6 +19,8 @@ The following note effects are supported:
  - Channel volume (0xC)
  - Row jump (0xD)
  - Retrigger note (0xE9)
+ - Add to volume (0xEA)
+ - Repeat Row (0xEE)
  - Set speed (0xF)
 
 

@@ -107,6 +107,9 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         this.filledSamples = 0;
         this.ticks = 0;
         this.newTick = true;
+        this.rowRepeat = 0;
+        this.rowJump = -1;
+        this.skipPattern = false;
         this.buffer = null;
         this.started = false;
         this.ready = false;
@@ -126,7 +129,9 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         this.filledSamples = 0;
         this.speed = 6;
         this.newTick = true;
+        this.rowRepeat = 0;
         this.rowJump = -1;
+        this.skipPattern = false;
         this.decodeRow();
     }
 
@@ -235,27 +240,27 @@ class PTModuleProcessor extends AudioWorkletProcessor{
      * and sound playback rate
      */
     tick() {
-        if (this.rowJump > -1) {
-            // TODO: check bounds ?
-            this.row = this.rowJump;
-            this.decodeRow();
-            this.rowJump = -1;
-            return;
-        }
-
         if (this.filledSamples > this.samplesPerTick) {
             this.newTick = true;
             this.ticks++;
             this.filledSamples = 0;
             if (this.ticks > this.speed - 1) {
                 this.ticks = 0;
-                this.row++;
-                if (this.row > 63) {
+
+                if (this.row > 63 || this.skipPattern) {
                     this.row = 0;
+                    this.skipPattern = false;
                     this.getNextPattern(true);
                 }
 
-                // console.log('** next row !', this.row.toString(16));
+                if (this.rowJump > -1) {
+                    this.row = this.rowJump;
+                    this.rowJump = -1;
+                } else if (this.rowRepeat <= 0) {
+                    this.row++;
+                }
+
+                console.log('** next row !', this.row.toString(16));
 
                 this.decodeRow();
             }
@@ -332,9 +337,10 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 // Is the default volume set to 64 ??
                 note.volume = 64;
             } else {
-                // sample selected but no period
+                // sample selected but no period: use previous one ?
                 if (note.sample > -1) {
-                    debugger;
+                    note.period = this.channels[i].period;
+                    note.volume = this.channels[i].volume;
                 }
                 // effects can be applied again
                 this.channels[i].done = false;
@@ -365,8 +371,6 @@ class PTModuleProcessor extends AudioWorkletProcessor{
             headerLength = 30;
 
         for (let i = 0; i < this.maxSamples; ++i) {
-            // if (i === 16)
-            //     debugger;
             const sample = {
                 name: BinUtils.readAscii(this.buffer, 22, offset),
                 length: BinUtils.readWord(this.buffer, offset + 22) * 2,
@@ -551,6 +555,7 @@ const Effects = {
     0xD(Module, channel) {
         if (!Module.ticks) {
             Module.rowJump = ((channel.data & 0xf0) >> 4) * 10 + (channel.data & 0x0f);
+            Module.skipPattern = true;
             channel.done = true;
         }
     },
@@ -585,6 +590,30 @@ const Effects = {
             // should we use repeat pos (if specified) instead ?)
             channel.samplePos = 0;
             channel.off = false;
+        }
+    },
+    /**
+     * Add to volume
+     */
+    0xEA(Module, channel) {
+        if (!Module.ticks) {
+            channel.volume += channel.data;
+            if (channel.volume > 64) {
+                channel.volume = 64;
+            }
+        }
+    },
+    /**
+     * Repeat Row
+     */
+    0xEE(Module, channel) {
+        if (!Module.ticks) {
+            if (!Module.rowRepeat) {
+                Module.rowRepeat = channel.data;
+                console.log('setting repeat to', Module.rowRepeat);
+            } else if (Module.rowRepeat) {
+                Module.rowRepeat--;
+            }
         }
     },
     /**
