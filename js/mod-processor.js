@@ -247,8 +247,11 @@ class PTModuleProcessor extends AudioWorkletProcessor{
             if (this.ticks > this.speed - 1) {
                 this.ticks = 0;
 
+                if (this.rowRepeat <= 0) {
+                    this.row++;
+                }
+
                 if (this.row > 63 || this.skipPattern) {
-                    this.row = 0;
                     this.skipPattern = false;
                     this.getNextPattern(true);
                 }
@@ -256,8 +259,10 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 if (this.rowJump > -1) {
                     this.row = this.rowJump;
                     this.rowJump = -1;
-                } else if (this.rowRepeat <= 0) {
-                    this.row++;
+                }
+
+                if (this.row > 63) {
+                    this.row = 0;
                 }
 
                 console.log('** next row !', this.row.toString(16));
