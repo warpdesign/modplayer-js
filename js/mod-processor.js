@@ -630,7 +630,7 @@ const Effects = {
             Module.speed = channel.data;
         } else {
             Module.bpm = channel.data;
-            this.calcTickSpeed();
+            Module.calcTickSpeed();
         }
         // execute effect only once
         channel.done = true;
