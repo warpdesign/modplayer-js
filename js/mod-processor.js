@@ -657,6 +657,19 @@ const Effects = {
         }
     },
     /**
+     * Toggle low-pass filter
+     */
+    0xE0(Module, channel) {
+        console.log('need to toggle lowPass', !!channel.data);
+        // TODO: handle this message in modplayer.js to activate the filter
+        Module.postMessage({
+            message: 'toggleLowPass',
+            data: {
+                activate: !!channel.data
+            }
+        });
+    },
+    /**
      * Loop pattern
      */
     0xE6(Module, channel) {
