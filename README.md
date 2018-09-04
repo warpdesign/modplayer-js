@@ -16,6 +16,7 @@ The following note effects are supported:
  - Portamento / slide to note (0x3)
  - Sample offset (0x9)
  - Volume slide (0xA)
+ - Position jump (0xB)
  - Channel volume (0xC)
  - Row jump (0xD)
  - Retrigger note (0xE9)

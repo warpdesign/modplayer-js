@@ -110,6 +110,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         this.rowRepeat = 0;
         this.rowJump = -1;
         this.skipPattern = false;
+        this.jumpPattern = -1;
         this.buffer = null;
         this.started = false;
         this.ready = false;
@@ -132,6 +133,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         this.rowRepeat = 0;
         this.rowJump = -1;
         this.skipPattern = false;
+        this.jumpPattern = -1;
         this.decodeRow();
     }
 
@@ -253,7 +255,13 @@ class PTModuleProcessor extends AudioWorkletProcessor{
 
                 if (this.row > 63 || this.skipPattern) {
                     this.skipPattern = false;
-                    this.getNextPattern(true);
+                    if (this.jumpPattern > -1) {
+                        this.position = this.jumpPattern;
+                        this.jumpPattern = -1;
+                        this.getNextPattern();
+                    } else {
+                        this.getNextPattern(true);
+                    }
                 }
 
                 if (this.rowJump > -1) {
@@ -276,13 +284,12 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         updatePos && this.position++;
 
         // Loop ? Use loop parameter
-        if (this.position == this.positions.length - 1) {
+        if (this.position > this.positions.length - 1) {
             debugger;
             console.log('Warning: last position reached, going back to 0');
             this.position = 0;
-        } else {
-            // console.log('// position', this.position, this.pattern);
         }
+
         this.pattern = this.positions[this.position];
 
         console.log('** position', this.position, 'pattern:', this.pattern);
@@ -300,16 +307,21 @@ class PTModuleProcessor extends AudioWorkletProcessor{
 
         for (let i = 0; i < this.channels.length; ++i) {
             const offset = i * 4;
+            const prevChannel = this.channels[i];
+
             // depends on command: maybe we don't touch anything
             const note = {
                 sample: (data[offset] & 0xF0 | data[2 + offset] >> 4) - 1,
                 period: (data[offset] & 0x0F) << 8 | data[1 + offset],
-                prevPeriod: this.channels[i] && this.channels[i].period || 0,
-                prevData: this.channels[i] && this.channels[i].data,
+                prevPeriod: prevChannel && prevChannel.period || 0,
+                prevData: prevChannel && prevChannel.data,
                 cmd: data[2 + offset] & 0xF,
                 data: data[3 + offset],
                 samplePos: 0,
-                done: false
+                done: false,
+                vForm: prevChannel && prevChannel.vForm || 0,
+                vDepth: prevChannel && prevChannel.vDepth || 0,
+                vSpeed: prevChannel && prevChannel.vSpeed || 0,
             };
 
             // extended command
@@ -500,6 +512,23 @@ const Effects = {
         }
     },
     /**
+     * Vibrato
+     */
+    0x4(Module, channel) {
+        // TODO: finish vibrato
+        if (!Module.ticks) {
+            var depth = channel.data & 0x0f,
+                speed = (channel.data & 0xf0) >> 4;
+
+            if (speed && depth) {
+                channel.vdepth = depth;
+                channel.vspeed = speed;
+            }
+        } else {
+            // need to advance here (and reset too ?)
+        }
+    },
+    /**
      * set sample startOffset
      */
     0x9(Module, channel) {
@@ -537,9 +566,10 @@ const Effects = {
      * Position Jump
      */
     0xB(Module, channel) {
-        if (channel.data >= 0 && channel.data <= this.patterns.length - 1) {
-            // this.position = channel.data;
-            debugger;
+        if (channel.data >= 0 && channel.data <= Module.patterns.length - 1) {
+            Module.skipPattern = true;
+            Module.jumpPattern = channel.data;
+            Module.rowJump = 0;
         }
     },
     /**
@@ -563,6 +593,19 @@ const Effects = {
             Module.skipPattern = true;
             channel.done = true;
         }
+    },
+    /**
+     * Toggle low-pass filter
+     */
+    0xE0(Module, channel) {
+        console.log('need to toggle lowPass', !!channel.data);
+        // TODO: handle this message in modplayer.js to activate the filter
+        Module.postMessage({
+            message: 'toggleLowPass',
+            data: {
+                activate: !!channel.data
+            }
+        });
     },
     /**
      * Loop pattern
