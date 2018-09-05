@@ -41,7 +41,8 @@
             effects = [],
             ctx = canvas.getContext('2d'),
             canvasWidth = canvas.width,
-            canvasHeight = canvas.height;
+            canvasHeight = canvas.height,
+            channelsPlaying = [true, true, true, true];
 
         toast = new Toast('info-snackbar');
 
@@ -96,6 +97,17 @@
             requestAnimationFrame(() => {
                 effects[effect](event.data);
             });
+        });
+
+        document.querySelector('.channel_control').addEventListener('click', (event) => {
+            if (event.target.id && event.target.id.match(/channel-toggle/)) {
+                var channel = event.target.id.substr(-1, 1),
+                    checked = event.target.hasAttribute('checked');
+
+                channelsPlaying[channel - 1] = !channelsPlaying[channel - 1];
+
+                ModPlayer.setPlayingChannels(channelsPlaying);
+            }
         });
 
         canvas.onclick = () => {
@@ -333,12 +345,39 @@
                         top:0;
                         left:0;
                     }
+
+                    .mdl-card__title{
+                        position:relative;
+                    }
+
+                    .channel_control{
+                        position:absolute;
+                        top:10px;
+                    }
                 </style>
 
                 <div class="demo-card-wide mdl-card mdl-shadow--2dp">
                     <div class="mdl-card__title">
                         <canvas width="512" height="128" id="visualizer"></canvas>
                         <h2 class="mdl-card__title-text"><div><i class="material-icons">audiotrack</i></div><div><span class="title"></span><br />by&nbsp;<span class="author"></span></div></h2>
+                        <div class="channel_control">
+                            <label class="mdl-icon-toggle mdl-js-icon-toggle mdl-js-ripple-effect" for="channel-toggle-1" title="Click to mute/unmute channel 1">
+                                <input type="checkbox" id="channel-toggle-1" class="mdl-icon-toggle__input" checked>
+                                <i class="mdl-icon-toggle__label material-icons">volume_up</i>
+                            </label>
+                            <label class="mdl-icon-toggle mdl-js-icon-toggle mdl-js-ripple-effect" for="channel-toggle-2" title="Click to mute/unmute channel 2">
+                                <input type="checkbox" id="channel-toggle-2" class="mdl-icon-toggle__input" checked>
+                                <i class="mdl-icon-toggle__label material-icons">volume_up</i>
+                            </label>
+                            <label class="mdl-icon-toggle mdl-js-icon-toggle mdl-js-ripple-effect" for="channel-toggle-3" title="Click to mute/unmute channel 3">
+                                <input type="checkbox" id="channel-toggle-3" class="mdl-icon-toggle__input" checked>
+                                <i class="mdl-icon-toggle__label material-icons">volume_up</i>
+                            </label>
+                            <label class="mdl-icon-toggle mdl-js-icon-toggle mdl-js-ripple-effect" for="channel-toggle-4" title="Click to mute/unmute channel 4">
+                                <input type="checkbox" id="channel-toggle-4" class="mdl-icon-toggle__input" checked>
+                                <i class="mdl-icon-toggle__label material-icons">volume_up</i>
+                            </label>
+                        </div>
                     </div>
                     <div class="mdl-card__supporting-text">
                         <div class="mdl-tabs mdl-js-tabs mdl-js-ripple-effect">
@@ -368,9 +407,9 @@
                         </a>
                     </div> -->
                     <div class="mdl-card__menu">
-                        <button class="mdl-button mdl-button--icon mdl-js-button mdl-js-ripple-effect">
+                        <!-- <button class="mdl-button mdl-button--icon mdl-js-button mdl-js-ripple-effect">
                             <i class="material-icons">attachment</i>
-                        </button>
+                        </button> -->
                     </div>
                 </div>
             </div>

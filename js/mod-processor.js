@@ -59,8 +59,10 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 if (this.ready) {
                     this.resetValues();
                 }
+                break;
 
             case 'setPlayingChannels':
+                console.log(event.data.channels);
                 event.data.channels.forEach((active, i) => {
                     const channel = this.channels[i];
                     if (channel) {
@@ -102,7 +104,9 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         this.patterns = [];
         this.positions = [];
         this.songLength = 0;
-        this.channels = new Array(4);
+        if (!this.channels) {
+            this.channels = new Array(4);
+        }
         this.maxSamples = 0;
         // These are the default Mod speed/bpm
         this.bpm = 125;
@@ -149,7 +153,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
 
     createChannels() {
         for (let i = 0; i < this.channels.length; ++i) {
-            this.channels[i] = {
+            var channel = {
                 sample: -1,
                 samplePos: 0,
                 period: 214,
@@ -158,6 +162,11 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 vform: -1,
                 vdepth: 0,
                 vspeed: 0
+            };
+            if (!this.channels[i]) {
+                this.channels[i] = channel;
+            } else {
+                Object.assign(this.channels[i], channel);
             }
         }
     }
