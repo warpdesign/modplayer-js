@@ -148,6 +148,13 @@ const ModPlayer = {
         });
     },
 
+    setPlayingChannels(channels) {
+        this.postMessage({
+            message: 'setPlayingChannels',
+            channels: channels
+        });
+    },
+
     render() {
         if (this.playing) {
             this.renderScope();

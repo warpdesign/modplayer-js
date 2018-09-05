@@ -59,6 +59,15 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 if (this.ready) {
                     this.resetValues();
                 }
+
+            case 'setPlayingChannels':
+                event.data.channels.forEach((active, i) => {
+                    const channel = this.channels[i];
+                    if (channel) {
+                        channel.off = !active;
+                    }
+                });
+                break;
         }
     }
 
@@ -134,7 +143,23 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         this.rowJump = -1;
         this.skipPattern = false;
         this.jumpPattern = -1;
+        this.createChannels();
         this.decodeRow();
+    }
+
+    createChannels() {
+        for (let i = 0; i < this.channels.length; ++i) {
+            this.channels[i] = {
+                sample: -1,
+                samplePos: 0,
+                period: 214,
+                volume: 64,
+                slideTo: -1,
+                vform: -1,
+                vdepth: 0,
+                vspeed: 0
+            }
+        }
     }
 
     prepareModule(buffer) {
@@ -148,6 +173,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         this.getPatternData();
         this.getSampleData();
         this.calcTickSpeed();
+        this.createChannels();
         this.resetValues();
         this.ready = true;
 
@@ -206,11 +232,12 @@ class PTModuleProcessor extends AudioWorkletProcessor{
 
                 // TODO: check that no effect can be applied without a note
                 // otherwise that will have to be moved outside this loop
-                if (this.newTick && channel.cmd && !channel.done) {
+                if (this.newTick && channel.cmd/* && !channel.off*/) {
                     this.executeEffect(channel);
                 }
 
-                if (channel.period && !channel.off) {
+                if (!channel.off && channel.period && channel.sample > -1 && !channel.done) {
+
                     const sample = this.samples[channel.sample];
 
                     // actually mix audio
@@ -219,11 +246,11 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                     const sampleSpeed = 7093789.2 / ((channel.period * 2) * this.mixingRate);
                     channel.samplePos += sampleSpeed;
                     // repeat samples
-                    if (!channel.off) {
+                    if (!channel.done) {
                         if (!sample.repeatLength && !sample.repeatStart) {
                             if (channel.samplePos > sample.length) {
                                 channel.samplePos = 0;
-                                channel.off = true;
+                                channel.done = true;
                             }
                         } else if (channel.samplePos >= (sample.repeatStart + sample.repeatLength)) {
                             channel.samplePos = sample.repeatStart;
@@ -273,9 +300,9 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                     this.row = 0;
                 }
 
-                console.log('** next row !', this.row.toString(16));
-
                 this.decodeRow();
+
+                console.log('** next row !', this.row.toString(16).padStart(2, "0"));
             }
         }
     }
@@ -307,66 +334,105 @@ class PTModuleProcessor extends AudioWorkletProcessor{
 
         for (let i = 0; i < this.channels.length; ++i) {
             const offset = i * 4;
-            const prevChannel = this.channels[i];
+            const period = (data[offset] & 0x0F) << 8 | data[1 + offset],
+                sample = (data[offset] & 0xF0 | data[2 + offset] >> 4) - 1,
+                cmd = data[2 + offset] & 0xF,
+                cmdData = data[3 + offset];
+            const channel = this.channels[i];
 
-            // depends on command: maybe we don't touch anything
-            const note = {
-                sample: (data[offset] & 0xF0 | data[2 + offset] >> 4) - 1,
-                period: (data[offset] & 0x0F) << 8 | data[1 + offset],
-                prevPeriod: prevChannel && prevChannel.period || 0,
-                prevData: prevChannel && prevChannel.data,
-                cmd: data[2 + offset] & 0xF,
-                data: data[3 + offset],
-                samplePos: 0,
-                done: false,
-                vForm: prevChannel && prevChannel.vForm || 0,
-                vDepth: prevChannel && prevChannel.vDepth || 0,
-                vSpeed: prevChannel && prevChannel.vSpeed || 0,
-            };
-
-            // extended command
-            if (note.cmd === 0xE) {
-                // note.extcmd = note.data >> 4;
-                note.cmd = 0xE0 + (note.data >> 4);
-                note.data &= 0xF;
+            // check for command
+            if (cmd) {
+                // extended command
+                if (cmd === 0xE) {
+                    // note.extcmd = note.data >> 4;
+                    channel.cmd = 0xE0 + (cmdData >> 4);
+                    channel.data &= 0xF;
+                } else {
+                    channel.cmd = cmd;
+                    channel.data = cmdData;
+                }
+            } else {
+                channel.cmd = 0;
             }
 
-            // if (!note.cmd && this.channels[i] && this.channels[i].cmd && !this.channels[i].done) {
-            //     note.cmd = this.channels[i].cmd;
+            // check for new sample
+            if (sample > -1) {
+                channel.done = false;
+                channel.sample = sample;
+                channel.volume = this.samples[sample].volume;
+                channel.samplePos = 0;
+            }
+
+            if (period) {
+                channel.done = false;
+                channel.period = period;
+            }
+            // // depends on command: maybe we don't touch anything
+            // const note = {
+            //     sample: (data[offset] & 0xF0 | data[2 + offset] >> 4) - 1,
+            //     period: (data[offset] & 0x0F) << 8 | data[1 + offset],
+            //     prevPeriod: prevChannel && prevChannel.period || 0,
+            //     prevData: prevChannel && prevChannel.data,
+            //     prevSlideTo: prevChannel && (prevChannel.slideTo || prevChannel.prevSlideTo || 0),
+            //     cmd: data[2 + offset] & 0xF,
+            //     data: data[3 + offset],
+            //     samplePos: 0,
+            //     // done: false,
+            //     off: prevChannel && prevChannel.off || false,
+            //     vForm: prevChannel && prevChannel.vForm || 0,
+            //     vDepth: prevChannel && prevChannel.vDepth || 0,
+            //     vSpeed: prevChannel && prevChannel.vSpeed || 0,
+            // };
+
+            // // extended command
+            // if (note.cmd === 0xE) {
+            //     // note.extcmd = note.data >> 4;
+            //     note.cmd = 0xE0 + (note.data >> 4);
+            //     note.data &= 0xF;
             // }
 
-            if (note.period) {
-                // if a period was selected but no instrument set
-                // use the previous one
-                if (note.sample === -1) {
-                    note.sample = this.channels[i].sample;
-                    // use previous volume
-                    note.volume = this.channels[i].volume;
-                } else {
-                    // calculate channel volume once per row only if new sample
-                    // so that effect volume is applied during the whole row
-                    note.volume = this.samples[note.sample].volume;
-                }
-                this.channels[i] = note;
-            } else if (!this.channels[i]) {
-                // empty note as first element
-                this.channels[i] = note;
-                // Is the default volume set to 64 ??
-                note.volume = 64;
-            } else {
-                // sample selected but no period: use previous one ?
-                if (note.sample > -1) {
-                    note.period = this.channels[i].period;
-                    note.volume = this.channels[i].volume;
-                }
-                // effects can be applied again
-                this.channels[i].done = false;
-                // avoid endless loop
-                if (this.channels[i].cmd !== 0xD) {
-                    this.channels[i].cmd = note.cmd;
-                    this.channels[i].data = note.data;
-                }
-            }
+            // // if (!note.cmd && this.channels[i] && this.channels[i].cmd && !this.channels[i].done) {
+            // //     note.cmd = this.channels[i].cmd;
+            // // }
+
+            // // keep partamento
+            // if (note.cmd === 0x5) {
+            //     note.slideTo = prevChannel.slideTo || prevChannel.prevSlideTo || 0;
+            // }
+
+            // if (note.period) {
+            //     // if a period was selected but no instrument set
+            //     // use the previous one
+            //     if (note.sample === -1) {
+            //         note.sample = this.channels[i].sample;
+            //         // use previous volume
+            //         note.volume = this.channels[i].volume;
+            //     } else {
+            //         // calculate channel volume once per row only if new sample
+            //         // so that effect volume is applied during the whole row
+            //         note.volume = this.samples[note.sample].volume;
+            //     }
+            //     this.channels[i] = note;
+            // } else if (!this.channels[i]) {
+            //     // empty note as first element
+            //     this.channels[i] = note;
+            //     // Is the default volume set to 64 ??
+            //     note.volume = 64;
+            // } else {
+            //     // sample selected but no period: use previous one ?
+            //     if (note.sample > -1) {
+            //         note.period = this.channels[i].period;
+            //         note.volume = this.channels[i].volume;
+            //     }
+            //     // effects can be applied again
+            //     // this.channels[i].done = false;
+            //     // avoid endless loop
+            //     if (this.channels[i].cmd !== 0xD) {
+            //         this.channels[i].cmd = note.cmd;
+            //         this.channels[i].data = note.data;
+            //     }
+            // }
+            // console.log(this.channels[i]);
         }
     }
 
@@ -492,12 +558,12 @@ const Effects = {
     /**
      * Portamento (slide to note)
      */
-    0x3(Module, channel) {
+    0x3(Module, channel, doNotInit) {
         // zero tick: init effect
-        if (!Module.ticks) {
+        if (!Module.ticks && !doNotInit) {
             channel.slideTo = channel.period;
             channel.period = channel.prevPeriod;
-        } else {
+        } else if (channel.slideTo) {
             if (channel.period < channel.slideTo) {
                 channel.period += channel.data;
                 if (channel.period > channel.slideTo) {
@@ -509,14 +575,15 @@ const Effects = {
                     channel.period = channel.slideTo;
                 }
             }
-        }
+        } else
+            debugger;
     },
     /**
      * Vibrato
      */
     0x4(Module, channel) {
         // TODO: finish vibrato
-        if (!Module.ticks) {
+        if (!Module.ticks) {dsgsd
             var depth = channel.data & 0x0f,
                 speed = (channel.data & 0xf0) >> 4;
 
@@ -529,13 +596,21 @@ const Effects = {
         }
     },
     /**
+     * Volume slide + portamento (keep previous one)
+     */
+    0x5(Module, channel) {
+        // execute volume slide
+        this[0x3](Module, channel, true);
+        this[0xA](Module, channel);
+    },
+    /**
      * set sample startOffset
      */
     0x9(Module, channel) {
         if (!Module.ticks) {
             channel.samplePos = channel.data * 256;
             // does it happen on next line ?
-            channel.done = true;
+            // channel.done = true;
         }
     },
     /**
@@ -576,13 +651,15 @@ const Effects = {
       * Set channel volume
       */
     0xC(Module, channel) {
-        console.log('changing volume to', channel.data);
-        channel.volume = channel.data;
-        if (channel.volume > 64) {
-            channel.volume = 64;
+        if (!Module.ticks) {
+            // console.log('changing volume to', channel.data);
+            channel.volume = channel.data;
+            if (channel.volume > 64) {
+                channel.volume = 64;
+            }
         }
         // execute effect only once
-        channel.done = true;
+        // channel.done = true;
     },
     /**
      * Row jump
@@ -591,7 +668,7 @@ const Effects = {
         if (!Module.ticks) {
             Module.rowJump = ((channel.data & 0xf0) >> 4) * 10 + (channel.data & 0x0f);
             Module.skipPattern = true;
-            channel.done = true;
+            // channel.done = true;
         }
     },
     /**
@@ -637,7 +714,7 @@ const Effects = {
             console.log('retriggering note!', Module.ticks + 1);
             // should we use repeat pos (if specified) instead ?)
             channel.samplePos = 0;
-            channel.off = false;
+            channel.done = false;
         }
     },
     /**
@@ -669,13 +746,15 @@ const Effects = {
      * Change playback speed
      */
     0xF(Module, channel) {
-        if (channel.data < 32) {
-            Module.speed = channel.data;
-        } else {
-            Module.bpm = channel.data;
-            Module.calcTickSpeed();
+        if (!Module.ticks) {
+            if (channel.data < 32) {
+                Module.speed = channel.data;
+            } else {
+                Module.bpm = channel.data;
+                Module.calcTickSpeed();
+            }
+            // execute effect only once
+            // channel.done = true;
         }
-        // execute effect only once
-        channel.done = true;
     }
 }
