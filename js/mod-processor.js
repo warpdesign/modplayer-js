@@ -156,12 +156,14 @@ class PTModuleProcessor extends AudioWorkletProcessor{
             var channel = {
                 sample: -1,
                 samplePos: 0,
-                period: 214,
+                period: 0,
                 volume: 64,
                 slideTo: -1,
+                slideSpeed: 0,
                 vform: -1,
                 vdepth: 0,
-                vspeed: 0
+                vspeed: 0,
+                id: i
             };
             if (!this.channels[i]) {
                 this.channels[i] = channel;
@@ -241,7 +243,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
 
                 // TODO: check that no effect can be applied without a note
                 // otherwise that will have to be moved outside this loop
-                if (this.newTick && channel.cmd/* && !channel.off*/) {
+                if (this.newTick && channel.cmd) {
                     this.executeEffect(channel);
                 }
 
@@ -374,8 +376,12 @@ class PTModuleProcessor extends AudioWorkletProcessor{
 
             if (period) {
                 channel.done = false;
-                channel.period = period;
-                // reset samplePos as well ?
+                // portamento will slide to the period, keep the previous one
+                if (channel.cmd !== 0x3) {
+                    channel.period = period;
+                    channel.samplePos = 0;
+                }
+                // channel.samplePos = 0;
             }
             // // depends on command: maybe we don't touch anything
             // const note = {
@@ -570,23 +576,26 @@ const Effects = {
      */
     0x3(Module, channel, doNotInit) {
         // zero tick: init effect
-        if (!Module.ticks && !doNotInit) {
+        if (!Module.ticks) {
+            if (!doNotInit) {
+                channel.slideSpeed = channel.data;
+            }
             channel.slideTo = channel.period;
-            channel.period = channel.prevPeriod;
-        } else if (channel.slideTo) {
+        } else if (channel.slideTo && Module.ticks) {
             if (channel.period < channel.slideTo) {
-                channel.period += channel.data;
+                channel.period += channel.slideSpeed;
                 if (channel.period > channel.slideTo) {
-                    channel.period = channel.slideto;
+                    channel.period = channel.slideTo;
                 }
             } else if (channel.period > channel.slideTo) {
-                channel.period -= channel.data;
+                channel.period -= channel.slideSpeed;
                 if (channel.period < channel.slideTo) {
                     channel.period = channel.slideTo;
                 }
             }
-        } else
-            debugger;
+        } else {
+            console.log('portamento + volume slide: keeping previous values');
+        }
     },
     /**
      * Vibrato
@@ -610,7 +619,7 @@ const Effects = {
      */
     0x5(Module, channel) {
         // execute volume slide
-        this[0x3](Module, channel, true);
+        this[0x3](Module, channel);
         this[0xA](Module, channel);
     },
     /**
@@ -645,6 +654,9 @@ const Effects = {
             } else if (channel.volume < 0) {
                 channel.volume = 0;
             }
+            if (Module.position) {
+                channel.id === 2 && console.log('volume slide to', channel.volume);
+            }
         }
     },
     /**
@@ -665,6 +677,8 @@ const Effects = {
             channel.volume = channel.data;
             if (channel.volume > 63) {
                 channel.volume = 63;
+            } else {
+                channel.id === 2 && console.log('volume set to', channel.volume);
             }
         }
     },
@@ -682,14 +696,16 @@ const Effects = {
      * Toggle low-pass filter
      */
     0xE0(Module, channel) {
-        console.log('need to toggle lowPass', !!channel.data);
-        // TODO: handle this message in modplayer.js to activate the filter
-        Module.postMessage({
-            message: 'toggleLowPass',
-            data: {
-                activate: !!channel.data
-            }
-        });
+        if (!Module.ticks) {
+            console.log('need to toggle lowPass', !!channel.data);
+            // TODO: handle this message in modplayer.js to activate the filter
+            Module.postMessage({
+                message: 'toggleLowPass',
+                data: {
+                    activate: !!channel.data
+                }
+            });
+        }
     },
     /**
      * Loop pattern
