@@ -375,6 +375,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
             if (period) {
                 channel.done = false;
                 channel.period = period;
+                // reset samplePos as well ?
             }
             // // depends on command: maybe we don't touch anything
             // const note = {
@@ -628,19 +629,19 @@ const Effects = {
     0xA(Module, channel) {
         // do not execute effect on tick 0
         if (Module.ticks) {
-            let x = channel.data & 0xF0,
-                y = channel.data & 0xF;
+            let x = channel.data >> 4,
+                y = channel.data & 0x0F;
 
             if (!y) {
-                console.log('volume slide', x);
+                // console.log('volume slide', x);
                 channel.volume += x;
             } else if (!x) {
-                console.log('volume slide', -y);
+                // console.log('volume slide', -y);
                 channel.volume -= y;
             }
 
-            if (channel.volume > 64) {
-                channel.volume = 64;
+            if (channel.volume > 63) {
+                channel.volume = 63;
             } else if (channel.volume < 0) {
                 channel.volume = 0;
             }
@@ -661,14 +662,11 @@ const Effects = {
       */
     0xC(Module, channel) {
         if (!Module.ticks) {
-            // console.log('changing volume to', channel.data);
             channel.volume = channel.data;
-            if (channel.volume > 64) {
-                channel.volume = 64;
+            if (channel.volume > 63) {
+                channel.volume = 63;
             }
         }
-        // execute effect only once
-        // channel.done = true;
     },
     /**
      * Row jump
@@ -732,8 +730,8 @@ const Effects = {
     0xEA(Module, channel) {
         if (!Module.ticks) {
             channel.volume += channel.data;
-            if (channel.volume > 64) {
-                channel.volume = 64;
+            if (channel.volume > 63) {
+                channel.volume = 63;
             }
         }
     },
