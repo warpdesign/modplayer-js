@@ -160,6 +160,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 volume: 64,
                 slideTo: -1,
                 slideSpeed: 0,
+                delay: 0,
                 vform: -1,
                 vdepth: 0,
                 vspeed: 0,
@@ -247,7 +248,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                     this.executeEffect(channel);
                 }
 
-                if (!channel.off && channel.period && channel.sample > -1 && !channel.done) {
+                if (!channel.off && channel.period && channel.sample > -1 && !channel.done && this.ticks >= channel.delay) {
 
                     const sample = this.samples[channel.sample];
 
@@ -351,13 +352,15 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 cmdData = data[3 + offset];
             const channel = this.channels[i];
 
+            channel.delay = 0;
+
             // check for command
             if (cmd) {
                 // extended command
                 if (cmd === 0xE) {
                     // note.extcmd = note.data >> 4;
                     channel.cmd = 0xE0 + (cmdData >> 4);
-                    channel.data &= 0xF;
+                    channel.data = cmdData & 0x0F;
                 } else {
                     channel.cmd = cmd;
                     channel.data = cmdData;
@@ -381,7 +384,6 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                     channel.period = period;
                     channel.samplePos = 0;
                 }
-                // channel.samplePos = 0;
             }
             // // depends on command: maybe we don't touch anything
             // const note = {
@@ -542,6 +544,15 @@ class PTModuleProcessor extends AudioWorkletProcessor{
             offset += length;
         }
     }
+
+    toggleLowPass(enabled) {
+        this.postMessage({
+            message: 'toggleLowPass',
+            data: {
+                activate: enabled
+            }
+        });
+    }
 }
 
 registerProcessor('mod-processor', PTModuleProcessor);
@@ -699,12 +710,7 @@ const Effects = {
         if (!Module.ticks) {
             console.log('need to toggle lowPass', !!channel.data);
             // TODO: handle this message in modplayer.js to activate the filter
-            Module.postMessage({
-                message: 'toggleLowPass',
-                data: {
-                    activate: !!channel.data
-                }
-            });
+            Module.toggleLowPass(!!channel.data);
         }
     },
     /**
@@ -749,6 +755,14 @@ const Effects = {
             if (channel.volume > 63) {
                 channel.volume = 63;
             }
+        }
+    },
+    /**
+     * Delay sample start
+     */
+    0xED(Module, channel) {
+        if (!Module.ticks) {
+            channel.delay = channel.data;
         }
     },
     /**
