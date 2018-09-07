@@ -25,6 +25,8 @@ const ModPlayer = {
         }
 
         this.loaded = false;
+        this.wasPlaying = this.playing;
+
         this.pause();
 
         if (!this.context) {
@@ -103,6 +105,7 @@ const ModPlayer = {
                 this.loaded = true;
                 const event = new Event('moduleLoaded');
                 event.data = message.data.data;
+                event.data.wasPlaying = this.wasPlaying;
                 document.dispatchEvent(event);
                 break;
 

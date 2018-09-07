@@ -72,6 +72,10 @@
             });
 
             togglePlayButton();
+
+            if (event.data.wasPlaying) {
+                togglePlay();
+            }
         });
 
         var modNav = document.querySelector('.nav-module'),
@@ -90,6 +94,10 @@
         componentHandler.upgradeDom();
 
         document.addEventListener('keyup', (e) => e.keyCode === 32 && togglePlay());
+
+        document.querySelector('.mdl-card__title-text').addEventListener('click', () => {
+            document.querySelector('.mdl-layout__obfuscator').click();
+        });
 
         document.addEventListener('analyzer_ready', (event) => {
             requestAnimationFrame(() => {
@@ -266,6 +274,7 @@
 
         .mdl-card__title h2 {
             color: black;
+            cursor:pointer;
         }
 
         .mdl-layout__drawer .mdl-navigation .mdl-navigation__link.selected {
@@ -357,7 +366,7 @@
                 <div class="demo-card-wide mdl-card mdl-shadow--2dp">
                     <div class="mdl-card__title">
                         <canvas width="512" height="128" id="visualizer"></canvas>
-                        <h2 class="mdl-card__title-text"><div><i class="material-icons">audiotrack</i></div><div><span class="title"></span><br />by&nbsp;<span class="author"></span></div></h2>
+                        <h2 class="mdl-card__title-text" title="Click here to load another module"><div><i class="material-icons">audiotrack</i></div><div><span class="title"></span><br />by&nbsp;<span class="author"></span></div></h2>
                         <div class="channel_control">
                             <label class="mdl-icon-toggle mdl-js-icon-toggle mdl-js-ripple-effect" for="channel-toggle-1" title="Click to mute/unmute channel 1">
                                 <input type="checkbox" id="channel-toggle-1" class="mdl-icon-toggle__input" checked>
