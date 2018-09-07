@@ -38,8 +38,6 @@ class PTModuleProcessor extends AudioWorkletProcessor{
     }
 
     handleMessage(event) {
-        console.log('[Processor:Received] "' + event.data.message +
-            '" (' + event.data.timeStamp + ')');
         switch (event.data.message) {
             case 'init':
                 this.mixingRate = event.data.mixingRate;
@@ -59,6 +57,17 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 if (this.ready) {
                     this.resetValues();
                 }
+                break;
+
+            case 'setPlayingChannels':
+                console.log(event.data.channels);
+                event.data.channels.forEach((active, i) => {
+                    const channel = this.channels[i];
+                    if (channel) {
+                        channel.off = !active;
+                    }
+                });
+                break;
         }
     }
 
@@ -93,7 +102,9 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         this.patterns = [];
         this.positions = [];
         this.songLength = 0;
-        this.channels = new Array(4);
+        if (!this.channels) {
+            this.channels = new Array(4);
+        }
         this.maxSamples = 0;
         // These are the default Mod speed/bpm
         this.bpm = 125;
@@ -134,7 +145,31 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         this.rowJump = -1;
         this.skipPattern = false;
         this.jumpPattern = -1;
+        this.createChannels();
         this.decodeRow();
+    }
+
+    createChannels() {
+        for (let i = 0; i < this.channels.length; ++i) {
+            var channel = {
+                sample: -1,
+                samplePos: 0,
+                period: 0,
+                volume: 64,
+                slideTo: -1,
+                slideSpeed: 0,
+                delay: 0,
+                vform: -1,
+                vdepth: 0,
+                vspeed: 0,
+                id: i
+            };
+            if (!this.channels[i]) {
+                this.channels[i] = channel;
+            } else {
+                Object.assign(this.channels[i], channel);
+            }
+        }
     }
 
     prepareModule(buffer) {
@@ -148,6 +183,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         this.getPatternData();
         this.getSampleData();
         this.calcTickSpeed();
+        this.createChannels();
         this.resetValues();
         this.ready = true;
 
@@ -206,11 +242,12 @@ class PTModuleProcessor extends AudioWorkletProcessor{
 
                 // TODO: check that no effect can be applied without a note
                 // otherwise that will have to be moved outside this loop
-                if (this.newTick && channel.cmd && !channel.done) {
+                if (this.newTick && channel.cmd) {
                     this.executeEffect(channel);
                 }
 
-                if (channel.period && !channel.off) {
+                if (!channel.off && channel.period && channel.sample > -1 && !channel.done && this.ticks >= channel.delay) {
+
                     const sample = this.samples[channel.sample];
 
                     // actually mix audio
@@ -219,11 +256,11 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                     const sampleSpeed = 7093789.2 / ((channel.period * 2) * this.mixingRate);
                     channel.samplePos += sampleSpeed;
                     // repeat samples
-                    if (!channel.off) {
+                    if (!channel.done) {
                         if (!sample.repeatLength && !sample.repeatStart) {
                             if (channel.samplePos > sample.length) {
                                 channel.samplePos = 0;
-                                channel.off = true;
+                                channel.done = true;
                             }
                         } else if (channel.samplePos >= (sample.repeatStart + sample.repeatLength)) {
                             channel.samplePos = sample.repeatStart;
@@ -273,9 +310,9 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                     this.row = 0;
                 }
 
-                console.log('** next row !', this.row.toString(16));
-
                 this.decodeRow();
+
+                console.log('** next row !', this.row.toString(16).padStart(2, "0"));
             }
         }
     }
@@ -307,64 +344,47 @@ class PTModuleProcessor extends AudioWorkletProcessor{
 
         for (let i = 0; i < this.channels.length; ++i) {
             const offset = i * 4;
-            const prevChannel = this.channels[i];
+            const period = (data[offset] & 0x0F) << 8 | data[1 + offset],
+                sample = (data[offset] & 0xF0 | data[2 + offset] >> 4) - 1,
+                cmd = data[2 + offset] & 0xF,
+                cmdData = data[3 + offset];
+            const channel = this.channels[i];
 
-            // depends on command: maybe we don't touch anything
-            const note = {
-                sample: (data[offset] & 0xF0 | data[2 + offset] >> 4) - 1,
-                period: (data[offset] & 0x0F) << 8 | data[1 + offset],
-                prevPeriod: prevChannel && prevChannel.period || 0,
-                prevData: prevChannel && prevChannel.data,
-                cmd: data[2 + offset] & 0xF,
-                data: data[3 + offset],
-                samplePos: 0,
-                done: false,
-                vForm: prevChannel && prevChannel.vForm || 0,
-                vDepth: prevChannel && prevChannel.vDepth || 0,
-                vSpeed: prevChannel && prevChannel.vSpeed || 0,
-            };
+            channel.delay = 0;
 
-            // extended command
-            if (note.cmd === 0xE) {
-                // note.extcmd = note.data >> 4;
-                note.cmd = 0xE0 + (note.data >> 4);
-                note.data &= 0xF;
+            // check for command
+            if (cmd) {
+                // extended command
+                if (cmd === 0xE) {
+                    // note.extcmd = note.data >> 4;
+                    channel.cmd = 0xE0 + (cmdData >> 4);
+                    channel.data = cmdData & 0x0F;
+                } else {
+                    channel.cmd = cmd;
+                    channel.data = cmdData;
+                }
+            } else {
+                channel.cmd = 0;
             }
 
-            // if (!note.cmd && this.channels[i] && this.channels[i].cmd && !this.channels[i].done) {
-            //     note.cmd = this.channels[i].cmd;
-            // }
+            // check for new sample
+            if (sample > -1) {
+                if (channel.cmd !== 0x3 && channel.cmd !== 0x5) {
+                    channel.samplePos = 0;
+                }
+                channel.done = false;
+                channel.sample = sample;
+                channel.volume = this.samples[sample].volume;
+            }
 
-            if (note.period) {
-                // if a period was selected but no instrument set
-                // use the previous one
-                if (note.sample === -1) {
-                    note.sample = this.channels[i].sample;
-                    // use previous volume
-                    note.volume = this.channels[i].volume;
+            if (period) {
+                channel.done = false;
+                // portamento will slide to the period, keep the previous one
+                if (channel.cmd !== 0x3 && channel.cmd !== 0x5) {
+                    channel.period = period;
+                    channel.samplePos = 0;
                 } else {
-                    // calculate channel volume once per row only if new sample
-                    // so that effect volume is applied during the whole row
-                    note.volume = this.samples[note.sample].volume;
-                }
-                this.channels[i] = note;
-            } else if (!this.channels[i]) {
-                // empty note as first element
-                this.channels[i] = note;
-                // Is the default volume set to 64 ??
-                note.volume = 64;
-            } else {
-                // sample selected but no period: use previous one ?
-                if (note.sample > -1) {
-                    note.period = this.channels[i].period;
-                    note.volume = this.channels[i].volume;
-                }
-                // effects can be applied again
-                this.channels[i].done = false;
-                // avoid endless loop
-                if (this.channels[i].cmd !== 0xD) {
-                    this.channels[i].cmd = note.cmd;
-                    this.channels[i].data = note.data;
+                    channel.slideTo = period;
                 }
             }
         }
@@ -460,6 +480,15 @@ class PTModuleProcessor extends AudioWorkletProcessor{
             offset += length;
         }
     }
+
+    toggleLowPass(enabled) {
+        this.postMessage({
+            message: 'toggleLowPass',
+            data: {
+                activate: enabled
+            }
+        });
+    }
 }
 
 registerProcessor('mod-processor', PTModuleProcessor);
@@ -492,23 +521,27 @@ const Effects = {
     /**
      * Portamento (slide to note)
      */
-    0x3(Module, channel) {
+    0x3(Module, channel, doNotInit) {
         // zero tick: init effect
         if (!Module.ticks) {
-            channel.slideTo = channel.period;
-            channel.period = channel.prevPeriod;
-        } else {
+            if (!doNotInit && channel.data) {
+                channel.slideSpeed = channel.data;
+            }
+            // channel.slideTo = channel.period;
+        } else if (channel.slideTo && Module.ticks) {
             if (channel.period < channel.slideTo) {
-                channel.period += channel.data;
+                channel.period += channel.slideSpeed;
                 if (channel.period > channel.slideTo) {
-                    channel.period = channel.slideto;
+                    channel.period = channel.slideTo;
                 }
             } else if (channel.period > channel.slideTo) {
-                channel.period -= channel.data;
+                channel.period -= channel.slideSpeed;
                 if (channel.period < channel.slideTo) {
                     channel.period = channel.slideTo;
                 }
             }
+        } else {
+            console.log('portamento + volume slide: keeping previous values');
         }
     },
     /**
@@ -525,8 +558,27 @@ const Effects = {
                 channel.vspeed = speed;
             }
         } else {
+            console.warn('vibrato not implemented yet');
             // need to advance here (and reset too ?)
         }
+    },
+    /**
+     * Volume Slide + Portamento (keep previous one)
+     */
+    0x5(Module, channel) {
+        // perform portamento
+        this[0x3](Module, channel);
+        // then volume slide
+        this[0xA](Module, channel);
+    },
+    /**
+     * Volume Slide + Vibrato (keep previous)
+     */
+    0x6(Module, channel) {
+        // perform vibrato
+        this[0x4](Module, channel);
+        // then volume slide
+        this[0xA](Module, channel);
     },
     /**
      * set sample startOffset
@@ -535,7 +587,7 @@ const Effects = {
         if (!Module.ticks) {
             channel.samplePos = channel.data * 256;
             // does it happen on next line ?
-            channel.done = true;
+            // channel.done = true;
         }
     },
     /**
@@ -544,19 +596,19 @@ const Effects = {
     0xA(Module, channel) {
         // do not execute effect on tick 0
         if (Module.ticks) {
-            let x = channel.data & 0xF0,
-                y = channel.data & 0xF;
+            let x = channel.data >> 4,
+                y = channel.data & 0x0F;
 
             if (!y) {
-                console.log('volume slide', x);
+                // console.log('volume slide', x);
                 channel.volume += x;
             } else if (!x) {
-                console.log('volume slide', -y);
+                // console.log('volume slide', -y);
                 channel.volume -= y;
             }
 
-            if (channel.volume > 64) {
-                channel.volume = 64;
+            if (channel.volume > 63) {
+                channel.volume = 63;
             } else if (channel.volume < 0) {
                 channel.volume = 0;
             }
@@ -576,13 +628,14 @@ const Effects = {
       * Set channel volume
       */
     0xC(Module, channel) {
-        console.log('changing volume to', channel.data);
-        channel.volume = channel.data;
-        if (channel.volume > 64) {
-            channel.volume = 64;
+        if (!Module.ticks) {
+            channel.volume = channel.data;
+            if (channel.volume > 63) {
+                channel.volume = 63;
+            }/* else {
+                 channel.id === 2 && console.log('volume set to', channel.volume);
+            }*/
         }
-        // execute effect only once
-        channel.done = true;
     },
     /**
      * Row jump
@@ -591,21 +644,17 @@ const Effects = {
         if (!Module.ticks) {
             Module.rowJump = ((channel.data & 0xf0) >> 4) * 10 + (channel.data & 0x0f);
             Module.skipPattern = true;
-            channel.done = true;
         }
     },
     /**
      * Toggle low-pass filter
      */
     0xE0(Module, channel) {
-        console.log('need to toggle lowPass', !!channel.data);
-        // TODO: handle this message in modplayer.js to activate the filter
-        Module.postMessage({
-            message: 'toggleLowPass',
-            data: {
-                activate: !!channel.data
-            }
-        });
+        if (!Module.ticks) {
+            console.log('need to toggle lowPass', !!channel.data);
+            // TODO: handle this message in modplayer.js to activate the filter
+            Module.toggleLowPass(!!channel.data);
+        }
     },
     /**
      * Loop pattern
@@ -637,7 +686,7 @@ const Effects = {
             console.log('retriggering note!', Module.ticks + 1);
             // should we use repeat pos (if specified) instead ?)
             channel.samplePos = 0;
-            channel.off = false;
+            channel.done = false;
         }
     },
     /**
@@ -646,9 +695,17 @@ const Effects = {
     0xEA(Module, channel) {
         if (!Module.ticks) {
             channel.volume += channel.data;
-            if (channel.volume > 64) {
-                channel.volume = 64;
+            if (channel.volume > 63) {
+                channel.volume = 63;
             }
+        }
+    },
+    /**
+     * Delay sample start
+     */
+    0xED(Module, channel) {
+        if (!Module.ticks) {
+            channel.delay = channel.data;
         }
     },
     /**
@@ -669,13 +726,15 @@ const Effects = {
      * Change playback speed
      */
     0xF(Module, channel) {
-        if (channel.data < 32) {
-            Module.speed = channel.data;
-        } else {
-            Module.bpm = channel.data;
-            Module.calcTickSpeed();
+        if (!Module.ticks) {
+            if (channel.data < 32) {
+                Module.speed = channel.data;
+            } else {
+                Module.bpm = channel.data;
+                Module.calcTickSpeed();
+            }
+            // execute effect only once
+            // channel.done = true;
         }
-        // execute effect only once
-        channel.done = true;
     }
 }

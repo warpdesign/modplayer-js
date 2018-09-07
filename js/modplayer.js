@@ -63,12 +63,17 @@ const ModPlayer = {
                 mixingRate: this.mixingRate
             });
             this.workletNode.port.start();
-            this.workletNode.connect(this.context.destination);
+
+            this.filterNode = this.context.createBiquadFilter();
+            this.filterNode.frequency.value = 22050;
+
+            this.workletNode.connect(this.filterNode);
+            this.filterNode.connect(this.context.destination);
 
             // split channels and connect each channel's output
             // to a separate analyzer
             this.analysisSplitter = this.context.createChannelSplitter(2);
-            this.workletNode.connect(this.analysisSplitter);
+            this.filterNode.connect(this.analysisSplitter);
 
             this.analyserLeft = this.context.createAnalyser();
 
@@ -88,6 +93,10 @@ const ModPlayer = {
         });
     },
 
+    setLowPass(activate) {
+        this.filterNode.frequency.value = activate && 6000 || 22050;
+    },
+
     handleMessage(message) {
         switch (message.data.message) {
             case 'moduleLoaded':
@@ -95,6 +104,10 @@ const ModPlayer = {
                 const event = new Event('moduleLoaded');
                 event.data = message.data.data;
                 document.dispatchEvent(event);
+                break;
+
+            case 'toggleLowPass':
+                this.setLowPass(message.data.data.activate);
                 break;
         }
     },
@@ -133,6 +146,8 @@ const ModPlayer = {
                 message: 'reset'
             });
         }
+
+        this.setLowPass(false);
     },
 
     pause() {
@@ -145,6 +160,13 @@ const ModPlayer = {
         this.postMessage({
             message: 'setPlay',
             playing: this.playing
+        });
+    },
+
+    setPlayingChannels(channels) {
+        this.postMessage({
+            message: 'setPlayingChannels',
+            channels: channels
         });
     },
 
