@@ -374,7 +374,9 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 channel.done = false;
                 channel.sample = sample;
                 channel.volume = this.samples[sample].volume;
-                channel.samplePos = 0;
+                if (channel.cmd !== 0x3) {
+                    channel.samplePos = 0;
+                }
             }
 
             if (period) {
@@ -383,6 +385,8 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 if (channel.cmd !== 0x3) {
                     channel.period = period;
                     channel.samplePos = 0;
+                } else {
+                    channel.slideTo = period;
                 }
             }
             // // depends on command: maybe we don't touch anything
@@ -588,10 +592,10 @@ const Effects = {
     0x3(Module, channel, doNotInit) {
         // zero tick: init effect
         if (!Module.ticks) {
-            if (!doNotInit) {
+            if (!doNotInit && channel.data) {
                 channel.slideSpeed = channel.data;
             }
-            channel.slideTo = channel.period;
+            // channel.slideTo = channel.period;
         } else if (channel.slideTo && Module.ticks) {
             if (channel.period < channel.slideTo) {
                 channel.period += channel.slideSpeed;
