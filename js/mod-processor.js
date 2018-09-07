@@ -38,8 +38,6 @@ class PTModuleProcessor extends AudioWorkletProcessor{
     }
 
     handleMessage(event) {
-        console.log('[Processor:Received] "' + event.data.message +
-            '" (' + event.data.timeStamp + ')');
         switch (event.data.message) {
             case 'init':
                 this.mixingRate = event.data.mixingRate;
@@ -389,72 +387,6 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                     channel.slideTo = period;
                 }
             }
-            // // depends on command: maybe we don't touch anything
-            // const note = {
-            //     sample: (data[offset] & 0xF0 | data[2 + offset] >> 4) - 1,
-            //     period: (data[offset] & 0x0F) << 8 | data[1 + offset],
-            //     prevPeriod: prevChannel && prevChannel.period || 0,
-            //     prevData: prevChannel && prevChannel.data,
-            //     prevSlideTo: prevChannel && (prevChannel.slideTo || prevChannel.prevSlideTo || 0),
-            //     cmd: data[2 + offset] & 0xF,
-            //     data: data[3 + offset],
-            //     samplePos: 0,
-            //     // done: false,
-            //     off: prevChannel && prevChannel.off || false,
-            //     vForm: prevChannel && prevChannel.vForm || 0,
-            //     vDepth: prevChannel && prevChannel.vDepth || 0,
-            //     vSpeed: prevChannel && prevChannel.vSpeed || 0,
-            // };
-
-            // // extended command
-            // if (note.cmd === 0xE) {
-            //     // note.extcmd = note.data >> 4;
-            //     note.cmd = 0xE0 + (note.data >> 4);
-            //     note.data &= 0xF;
-            // }
-
-            // // if (!note.cmd && this.channels[i] && this.channels[i].cmd && !this.channels[i].done) {
-            // //     note.cmd = this.channels[i].cmd;
-            // // }
-
-            // // keep partamento
-            // if (note.cmd === 0x5) {
-            //     note.slideTo = prevChannel.slideTo || prevChannel.prevSlideTo || 0;
-            // }
-
-            // if (note.period) {
-            //     // if a period was selected but no instrument set
-            //     // use the previous one
-            //     if (note.sample === -1) {
-            //         note.sample = this.channels[i].sample;
-            //         // use previous volume
-            //         note.volume = this.channels[i].volume;
-            //     } else {
-            //         // calculate channel volume once per row only if new sample
-            //         // so that effect volume is applied during the whole row
-            //         note.volume = this.samples[note.sample].volume;
-            //     }
-            //     this.channels[i] = note;
-            // } else if (!this.channels[i]) {
-            //     // empty note as first element
-            //     this.channels[i] = note;
-            //     // Is the default volume set to 64 ??
-            //     note.volume = 64;
-            // } else {
-            //     // sample selected but no period: use previous one ?
-            //     if (note.sample > -1) {
-            //         note.period = this.channels[i].period;
-            //         note.volume = this.channels[i].volume;
-            //     }
-            //     // effects can be applied again
-            //     // this.channels[i].done = false;
-            //     // avoid endless loop
-            //     if (this.channels[i].cmd !== 0xD) {
-            //         this.channels[i].cmd = note.cmd;
-            //         this.channels[i].data = note.data;
-            //     }
-            // }
-            // console.log(this.channels[i]);
         }
     }
 
@@ -617,7 +549,7 @@ const Effects = {
      */
     0x4(Module, channel) {
         // TODO: finish vibrato
-        if (!Module.ticks) {dsgsd
+        if (!Module.ticks) {
             var depth = channel.data & 0x0f,
                 speed = (channel.data & 0xf0) >> 4;
 
@@ -626,15 +558,26 @@ const Effects = {
                 channel.vspeed = speed;
             }
         } else {
+            console.warn('vibrato not implemented yet');
             // need to advance here (and reset too ?)
         }
     },
     /**
-     * Volume slide + portamento (keep previous one)
+     * Volume Slide + Portamento (keep previous one)
      */
     0x5(Module, channel) {
-        // execute volume slide
+        // perform portamento
         this[0x3](Module, channel);
+        // then volume slide
+        this[0xA](Module, channel);
+    },
+    /**
+     * Volume Slide + Vibrato (keep previous)
+     */
+    0x6(Module, channel) {
+        // perform vibrato
+        this[0x4](Module, channel);
+        // then volume slide
         this[0xA](Module, channel);
     },
     /**
@@ -669,9 +612,6 @@ const Effects = {
             } else if (channel.volume < 0) {
                 channel.volume = 0;
             }
-            if (Module.position) {
-                channel.id === 2 && console.log('volume slide to', channel.volume);
-            }
         }
     },
     /**
@@ -692,9 +632,9 @@ const Effects = {
             channel.volume = channel.data;
             if (channel.volume > 63) {
                 channel.volume = 63;
-            } else {
-                channel.id === 2 && console.log('volume set to', channel.volume);
-            }
+            }/* else {
+                 channel.id === 2 && console.log('volume set to', channel.volume);
+            }*/
         }
     },
     /**
@@ -704,7 +644,6 @@ const Effects = {
         if (!Module.ticks) {
             Module.rowJump = ((channel.data & 0xf0) >> 4) * 10 + (channel.data & 0x0f);
             Module.skipPattern = true;
-            // channel.done = true;
         }
     },
     /**

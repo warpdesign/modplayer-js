@@ -5,25 +5,26 @@ JavaScript player for SoundTracker/Noisetracker mod files using the webaudio [Au
 
 For a demo, head over [here](https://warpdesign.github.io/modplayer-js/).
 
+# Requirements
+
+modplayer-js requires a browser that supports the [ScriptProcessNode API](https://developer.mozilla.org/en-US/docs/Web/API/ScriptProcessorNode) and will make use of the new [AudioWorklet API](https://developers.google.com/web/updates/2017/12/audio-worklet]) if it's detected (as I'm publishing it only Chrome supports it).
+
+modplayer-js has been tested on:
+
+ - Safari 11 (OSX & iOS)
+ - Firefox
+ - Chrome
+ - Edge
+
 # What's implemented
 
-Amiga 4 channel Sountracker/Noisetracker mod files with 4 channels and 15-31 instruments are supported.
+- Amiga 4 channel Sountracker/Noisetracker mod files with 4 channels and 15-31 instruments
+- LowPass filter (not sure it sounds right)
+- Left/Right Spectrum vizualizers
+- Ability to mute any of the 4 module channels
+- Includes 8 Module files from the Amiga-era
 
-The following note effects are supported:
-
- - Slide up (0x1)
- - Slide down (0x2)
- - Portamento / slide to note (0x3)
- - Sample offset (0x9)
- - Volume slide (0xA)
- - Position jump (0xB)
- - Channel volume (0xC)
- - Row jump (0xD)
- - Retrigger note (0xE9)
- - Add to volume (0xEA)
- - Repeat Row (0xEE)
- - Set speed (0xF)
-
+Most note effects should be supported, including extended ones. Only effect not implemented is `Vibrato (0x4 & 0x6)`.
 
 # Dependencies
 
@@ -33,6 +34,8 @@ ModPlayer JS makes use of the following piece of software:
  - The [AudioWorklet polyfill](https://github.com/GoogleChromeLabs/audioworklet-polyfill) is used to stay compatible with browsers that do not support it yet
  - Spectrum display is based on [Audio DSP Background](https://github.com/acarabott/audio-dsp-playground) by [@Acarabott](https://github.com/acarabott)
 
+I also heavily used [MilkyTracker](https://milkytracker.titandemo.org/) and [webaudio-mod-player](https://mod.haxor.fi/) - which plays lot of module formats with high fidelity - to track down some timing bugs.
+
 # Module files copyright
 
 ModPlayer-js includes the following module files:
@@ -41,7 +44,7 @@ ModPlayer-js includes the following module files:
  - all_that_she_wants.mod: Ace of Base remix from 1993 by Crossair
  - bigtime.mod: Björk Big Time Sensuality remix from 1994 by ISO from Axis group, appeared in the [Big Time Sensuality demo](https://www.youtube.com/watch?v=Y-2xUXk5F2w)
  - cannonfodder.mod: music from [Cannon Fodder](https://www.youtube.com/watch?v=PiYuq6Ac3a0) Amiga game by [John Hare](https://twitter.com/johnhare) / [Richard Joseph](https://en.wikipedia.org/wiki/Richard_Joseph)
- - desert_strike: music from [Desert Strike](https://www.youtube.com/watch?v=hcJaph0D7UM) Amiga game by Jason Whitley
+ - desert_strike.mod: music from [Desert Strike](https://www.youtube.com/watch?v=hcJaph0D7UM) Amiga game by Jason Whitley
  - LotusII.mod: music from [Lotus II](https://www.youtube.com/watch?v=vETonlaTZ4c) game by [Barry Leitch](https://en.wikipedia.org/wiki/Barry_Leitch)
  - projectx.mod: music from [Project-X](https://www.youtube.com/watch?v=gjq-ONi3dZE) Amiga game by [Allister Brimble](https://twitter.com/allisterbrimble)
  - silkworm.mod: music from [Silkworm](https://www.youtube.com/watch?v=4wNidIucUuc) Amiga game by [Barry Leitch](https://en.wikipedia.org/wiki/Barry_Leitch)
