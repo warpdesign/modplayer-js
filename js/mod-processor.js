@@ -371,18 +371,18 @@ class PTModuleProcessor extends AudioWorkletProcessor{
 
             // check for new sample
             if (sample > -1) {
+                if (channel.cmd !== 0x3 && channel.cmd !== 0x5) {
+                    channel.samplePos = 0;
+                }
                 channel.done = false;
                 channel.sample = sample;
                 channel.volume = this.samples[sample].volume;
-                if (channel.cmd !== 0x3) {
-                    channel.samplePos = 0;
-                }
             }
 
             if (period) {
                 channel.done = false;
                 // portamento will slide to the period, keep the previous one
-                if (channel.cmd !== 0x3) {
+                if (channel.cmd !== 0x3 && channel.cmd !== 0x5) {
                     channel.period = period;
                     channel.samplePos = 0;
                 } else {
