@@ -30,3 +30,28 @@ class Deferred {
         return Promise.resolve(val);
     }
 }
+
+/**
+ * Simple class to manage Material Lite Toast messages
+ */
+class Toast {
+    /**
+     *
+     * @param {String} id id of the element to use in the DOM
+     */
+    constructor(id) {
+        this.container = document.getElementById(id);
+    }
+
+    /**
+     *
+     * @param {String} message text to display in the toast
+     * @param {Number=2750} timeout timeout in ms
+     */
+    show(message, timeout = 2750) {
+        this.container.MaterialSnackbar.showSnackbar({
+            timeout: timeout,
+            message: message
+        });
+    }
+}

@@ -9,16 +9,21 @@ For a demo, head over [here](https://warpdesign.github.io/modplayer-js/).
 
 modplayer-js requires a browser that supports the [ScriptProcessNode API](https://developer.mozilla.org/en-US/docs/Web/API/ScriptProcessorNode) and will make use of the new [AudioWorklet API](https://developers.google.com/web/updates/2017/12/audio-worklet]) if it's detected (as I'm publishing it only Chrome supports it).
 
-modplayer-js has been tested on:
+The native `AudioWorklet` API is used in these browsers:
 
- - Safari 11 (OSX & iOS)
- - Firefox
- - Chrome
- - Edge
+ - Chrome 70 (OSX, Windows)
+
+Modplayer-js will fall back to the deprecated `ScriptProcessorNode` API in these browsers:
+
+ - Safari 11.1.2 (OSX & iOS)
+ - Firefox 62.0 (OSX)
+ - Edge 42.17134.4071.0 (Xbox One, stuttering audio)
+ - Edge 42 17134.1.0 (Windows 10, stuttering audio)
 
 # What's implemented
 
 - Amiga 4 channel Sountracker/Noisetracker mod files with 4 channels and 15-31 instruments
+- Stereo playback (channels 0 & 3 goes to the left chan, 1 & 2 to the right, just like on a real Amiga)
 - LowPass filter (not sure it sounds right)
 - Left/Right Spectrum vizualizers
 - Ability to mute any of the 4 module channels
@@ -31,8 +36,9 @@ Most note effects should be supported, including extended ones. Only effect not 
 ModPlayer JS makes use of the following piece of software:
 
  - The User Interface is built using [Material Design Lite](https://getmdl.io)
- - The [AudioWorklet polyfill](https://github.com/GoogleChromeLabs/audioworklet-polyfill) is used to stay compatible with browsers that do not support it yet
+ - The [AudioWorklet polyfill](https://github.com/GoogleChromeLabs/audioworklet-polyfill) is used to stay compatible with browsers that do not support the audio render thread API
  - Spectrum display is based on [Audio DSP Background](https://github.com/acarabott/audio-dsp-playground) by [@Acarabott](https://github.com/acarabott)
+ - get-float-time-domain-data was written by [github.com/mohayonao](https://github.com/mohayonao/get-float-time-domain-data) (needed for Safari)
 
 I also heavily used [MilkyTracker](https://milkytracker.titandemo.org/) and [webaudio-mod-player](https://mod.haxor.fi/) - which plays lot of module formats with high fidelity - to track down some timing bugs.
 
