@@ -8,6 +8,7 @@ const ModPlayer = {
     bufferFull: false,
     ready: true,
     loaded: false,
+    isXbox: !!navigator.userAgent.match(/Xbox One/),
     init(options) {
         this.canvas = options.canvas;
         this.ctx = this.canvas.getContext('2d');
@@ -55,7 +56,9 @@ const ModPlayer = {
 
         this.mixingRate = this.context.sampleRate;
 
-        return this.context.audioWorklet.addModule('js/mod-processor.js').then(() => {
+        const soundProcessor = this.isXbox && 'mod-processor-es5.js' || 'mod-processor.js';
+
+        return this.context.audioWorklet.addModule(`js/${soundProcessor}`).then(() => {
             this.workletNode = new AudioWorkletNode(this.context, 'mod-processor', {
                 outputChannelCount:[2]
             });
