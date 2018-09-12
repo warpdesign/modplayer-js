@@ -54,6 +54,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         switch (event.data.message) {
             case 'init':
                 this.mixingRate = event.data.mixingRate;
+                this.audioWorkletSupport = event.data.audioWorkletSupport;
                 break;
 
             case 'loadModule':
@@ -83,7 +84,6 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 break;
 
             case 'speedUp':
-                debugger;
                 console.log('speed up', event.data.speedUp);
                 this.speedUp = event.data.speedUp;
                 this.calcTickSpeed();
@@ -106,12 +106,22 @@ class PTModuleProcessor extends AudioWorkletProcessor{
     }
 
     emptyOutputBuffer(outputs) {
-        const chans = outputs.length,
-            bufLength = outputs[0][0].length;
+        if (this.audioWorkletSupport) {
+            const chans = outputs.length,
+                bufLength = outputs[0][0].length;
 
-        for (let chan = 0; chan < chans; ++chan) {
-            for (let i = 0; i < bufLength; ++i) {
-                outputs[chan][0][i] = 0.0;
+            for (let chan = 0; chan < chans; ++chan) {
+                for (let i = 0; i < bufLength; ++i) {
+                    outputs[chan][0][i] = 0.0;
+                }
+            }
+        } else {
+            const chans = outputs.length,
+                bufLength = outputs[0][0].length;
+            for (let chan = 0; chan < chans; ++chan) {
+                for (let i = 0; i < bufLength; ++i) {
+                    outputs[0][chan][i] = 0.0;
+                }
             }
         }
     }
@@ -247,25 +257,31 @@ class PTModuleProcessor extends AudioWorkletProcessor{
      * This method is called each time the buffer should be filled with data
      */
     mix(outputs) {
-        const length = outputs[0][0].length;
+        const length = this.audioWorkletSupport && outputs[0][0].length || outputs[0][0].length;
 
         for (let i = 0; i < length; ++i) {
             // buffers[0][i] = 0.0;
             // buffers[1][i] = 0.0;
-            outputs[0][0][i] = 0.0;
-            outputs[1][0][i] = 0.0;
-            outputs[2][0][i] = 0.0;
-            outputs[3][0][i] = 0.0;
-            // let outputChannel = 0;
+            let outputChannel = 0;
+
+            if (this.audioWorkletSupport) {
+                outputs[0][0][i] = 0.0;
+                outputs[1][0][i] = 0.0;
+                outputs[2][0][i] = 0.0;
+                outputs[3][0][i] = 0.0;
+            } else {
+                outputs[0][0][i] = 0.0;
+                outputs[0][1][i] = 0.0;
+            }
 
             // playing speed test
             this.tick();
             for (let chan = 0; chan < this.channels.length; ++chan) {
                 const channel = this.channels[chan];
-                const buffer = outputs[chan][0];
+                const buffer = this.audioWorkletSupport ? outputs[chan][0] : outputs[0][outputChannel];
                 // select left/right output depending on module channel:
                 // voices 0,3 go to left channel, 1,2 go to right channel
-                // outputChannel = outputChannel ^ (chan & 1);
+                outputChannel = outputChannel ^ (chan & 1);
 
                 // TODO: check that no effect can be applied without a note
                 // otherwise that will have to be moved outside this loop
@@ -646,10 +662,8 @@ const Effects = {
                 y = channel.data & 0x0F;
 
             if (!y) {
-                // console.log('volume slide', x);
                 channel.volume += x;
             } else if (!x) {
-                // console.log('volume slide', -y);
                 channel.volume -= y;
             }
 
@@ -678,9 +692,7 @@ const Effects = {
             channel.volume = channel.data;
             if (channel.volume > 63) {
                 channel.volume = 63;
-            }/* else {
-                 channel.id === 2 && console.log('volume set to', channel.volume);
-            }*/
+            }
         }
     },
     /**
@@ -698,7 +710,6 @@ const Effects = {
     0xE0(Module, channel) {
         if (!Module.ticks) {
             console.log('need to toggle lowPass', !!channel.data);
-            // TODO: handle this message in modplayer.js to activate the filter
             Module.toggleLowPass(!!channel.data);
         }
     },
@@ -808,5 +819,3 @@ const Effects = {
         }
     }
 }
-
-console.time('')

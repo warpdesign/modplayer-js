@@ -9,6 +9,7 @@ const ModPlayer = {
     ready: true,
     loaded: false,
     isXbox: !!navigator.userAgent.match(/Xbox One/),
+    audioWorkletSupport: !!AudioWorkletNode.toString().match(/native code/),
     init(options) {
         this.canvas = options.canvas;
         this.ctx = this.canvas.getContext('2d');
@@ -59,7 +60,12 @@ const ModPlayer = {
         const soundProcessor = this.isXbox && 'mod-processor-es5.js' || 'mod-processor.js';
 
         return this.context.audioWorklet.addModule(`js/${soundProcessor}`).then(() => {
-            this.splitter = this.context.createChannelSplitter(4);
+            const numAnalysers = this.audioWorkletSupport && 4 || 2;
+
+            // apply a filter
+            this.filterNode = this.context.createBiquadFilter();
+            this.filterNode.frequency.value = 22050;
+
             // Use 4 inputs that will be used to send each track's data to a separate analyser
             // NOTE: what should we do if we support more channels (and different mod formats)?
             this.workletNode = new AudioWorkletNode(this.context, 'mod-processor', {
@@ -68,41 +74,53 @@ const ModPlayer = {
                 numberOfOutputs: 4
             });
 
+            if (!this.audioWorkletSupport) {
+                this.splitter = this.context.createChannelSplitter(numAnalysers);
+                this.filterNode.connect(this.splitter);
+            }
+
             this.workletNode.port.onmessage = this.handleMessage.bind(this);
             this.postMessage({
                 message: 'init',
-                mixingRate: this.mixingRate
+                mixingRate: this.mixingRate,
+                audioWorkletSupport: this.audioWorkletSupport
             });
             this.workletNode.port.start();
 
             // create four analysers and connect each worklet's input to one
             this.analysers = new Array();
 
-            for (let i = 0; i < 4; ++i) {
+            for (let i = 0; i < numAnalysers; ++i) {
                 const analyser = this.context.createAnalyser();
                 analyser.fftSize = 256;// Math.pow(2, 11);
                 analyser.minDecibels = -90;
                 analyser.maxDecibels = -10;
                 analyser.smoothingTimeConstant = 0.65;
                 console.log('connecting analyzer to worklet output', i);
-                this.workletNode.connect(analyser, i, 0);
+                if (this.audioWorkletSupport) {
+                    this.workletNode.connect(analyser, i, 0);
+                } else {
+                    this.splitter.connect(analyser, i);
+                }
                 this.analysers.push(analyser);
             }
 
-            this.merger = this.context.createChannelMerger(4);
+            if (this.audioWorkletSupport) {
+                this.merger = this.context.createChannelMerger(4);
 
-            // merge the channel 0+3 in left channel, 1+2 in right channel
-            this.workletNode.connect(this.merger, 0, 0);
-            this.workletNode.connect(this.merger, 1, 1);
-            this.workletNode.connect(this.merger, 2, 1);
-            this.workletNode.connect(this.merger, 3, 0);
+                // merge the channel 0+3 in left channel, 1+2 in right channel
+                this.workletNode.connect(this.merger, 0, 0);
+                this.workletNode.connect(this.merger, 1, 1);
+                this.workletNode.connect(this.merger, 2, 1);
+                this.workletNode.connect(this.merger, 3, 0);
 
-            // apply a filter
-            this.filterNode = this.context.createBiquadFilter();
-            this.filterNode.frequency.value = 22050;
+                // finally apply the lowpass filter and send audio to destination
+                this.merger.connect(this.filterNode);
+            } else {
+                this.workletNode.connect(this.filterNode);
+            }
 
-            // finally apply the lowpass filter and send audio to destination
-            this.merger.connect(this.filterNode);
+
             this.filterNode.connect(this.context.destination);
         });
     },
@@ -154,7 +172,7 @@ const ModPlayer = {
 
             this.sendPlayingStatus();
 
-            this.render();
+            // this.render();
         } else {
             console.log('No module loaded');
         }
