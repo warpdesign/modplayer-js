@@ -793,12 +793,7 @@ const Effects = {
                 Module.bpm = channel.data;
                 Module.calcTickSpeed();
             }
-            // execute effect only once
-            // channel.done = true;
         }
-    },
-    0xFFF() {
-
     }
 }
 
