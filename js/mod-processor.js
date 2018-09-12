@@ -81,6 +81,13 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                     }
                 });
                 break;
+
+            case 'speedUp':
+                debugger;
+                console.log('speed up', event.data.speedUp);
+                this.speedUp = event.data.speedUp;
+                this.calcTickSpeed();
+                break;
         }
     }
 
@@ -90,21 +97,21 @@ class PTModuleProcessor extends AudioWorkletProcessor{
 
     process(inputs, outputs, params) {
         if (this.ready && this.playing) {
-            this.mix(outputs[0]);
+            this.mix(outputs);
         } else {
-            this.emptyOutputBuffer(outputs[0]);
+            this.emptyOutputBuffer(outputs);
         }
 
         return true;
     }
 
-    emptyOutputBuffer(buffers) {
-        const length = buffers[0].length,
-            chans = buffers.length;
+    emptyOutputBuffer(outputs) {
+        const chans = outputs.length,
+            bufLength = outputs[0][0].length;
 
-        for (let i = 0; i < length; ++i) {
-            for (let chan = 0; chan < chans; ++chan) {
-                buffers[chan][i] = 0.0;
+        for (let chan = 0; chan < chans; ++chan) {
+            for (let i = 0; i < bufLength; ++i) {
+                outputs[chan][0][i] = 0.0;
             }
         }
     }
@@ -123,6 +130,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         this.bpm = 125;
         // number of ticks before playing next pattern row
         this.speed = 6;
+        this.speedUp = 1;
         this.position = 0;
         this.pattern = 0;
         this.row = 0;
@@ -228,32 +236,36 @@ class PTModuleProcessor extends AudioWorkletProcessor{
      * Calculates the number of samples needed
      */
     calcTickSpeed() {
-        this.samplesPerTick = ((this.mixingRate * 60) / this.bpm) / 24;
+        this.samplesPerTick = ((this.mixingRate * 60) / (this.bpm * this.speedUp)) / 24;
     }
 
     /**
      * ProTracker audio mixer
      *
-     * @param {Float32Array} buffer Output buffer that should be filled with PCM data
+     * @param {Float32Array} outputs Output buffer that should be filled with PCM data
      *
      * This method is called each time the buffer should be filled with data
      */
-    mix(buffers) {
-        const length = buffers[0].length;
+    mix(outputs) {
+        const length = outputs[0][0].length;
 
         for (let i = 0; i < length; ++i) {
-            buffers[0][i] = 0.0;
-            buffers[1][i] = 0.0;
-
-            let outputChannel = 0;
+            // buffers[0][i] = 0.0;
+            // buffers[1][i] = 0.0;
+            outputs[0][0][i] = 0.0;
+            outputs[1][0][i] = 0.0;
+            outputs[2][0][i] = 0.0;
+            outputs[3][0][i] = 0.0;
+            // let outputChannel = 0;
 
             // playing speed test
             this.tick();
             for (let chan = 0; chan < this.channels.length; ++chan) {
                 const channel = this.channels[chan];
+                const buffer = outputs[chan][0];
                 // select left/right output depending on module channel:
                 // voices 0,3 go to left channel, 1,2 go to right channel
-                outputChannel = outputChannel ^ (chan & 1);
+                // outputChannel = outputChannel ^ (chan & 1);
 
                 // TODO: check that no effect can be applied without a note
                 // otherwise that will have to be moved outside this loop
@@ -266,7 +278,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                     const sample = this.samples[channel.sample];
 
                     // actually mix audio
-                    buffers[outputChannel][i] += (sample.data[Math.floor(channel.samplePos)] * channel.volume) / 64.0;
+                    buffer[i] += (sample.data[Math.floor(channel.samplePos)] * channel.volume) / 64.0;
 
                     const sampleSpeed = 7093789.2 / ((channel.period * 2) * this.mixingRate);
                     channel.samplePos += sampleSpeed;

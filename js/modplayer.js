@@ -12,7 +12,7 @@ const ModPlayer = {
     init(options) {
         this.canvas = options.canvas;
         this.ctx = this.canvas.getContext('2d');
-        this.canvasWidth = (this.canvas.width) / 2;
+        this.canvasWidth = (this.canvas.width) / 4;
         this.canvasHeight = this.canvas.height;
 
         return this.createContext();
@@ -59,9 +59,15 @@ const ModPlayer = {
         const soundProcessor = this.isXbox && 'mod-processor-es5.js' || 'mod-processor.js';
 
         return this.context.audioWorklet.addModule(`js/${soundProcessor}`).then(() => {
+            this.splitter = this.context.createChannelSplitter(4);
+            // Use 4 inputs that will be used to send each track's data to a separate analyser
+            // NOTE: what should we do if we support more channels (and different mod formats)?
             this.workletNode = new AudioWorkletNode(this.context, 'mod-processor', {
-                outputChannelCount:[2]
+                outputChannelCount: [1, 1, 1, 1],
+                numberOfInputs: 0,
+                numberOfOutputs: 4
             });
+
             this.workletNode.port.onmessage = this.handleMessage.bind(this);
             this.postMessage({
                 message: 'init',
@@ -69,37 +75,47 @@ const ModPlayer = {
             });
             this.workletNode.port.start();
 
+            // create four analysers and connect each worklet's input to one
+            this.analysers = new Array();
+
+            for (let i = 0; i < 4; ++i) {
+                const analyser = this.context.createAnalyser();
+                analyser.fftSize = 256;// Math.pow(2, 11);
+                analyser.minDecibels = -90;
+                analyser.maxDecibels = -10;
+                analyser.smoothingTimeConstant = 0.65;
+                console.log('connecting analyzer to worklet output', i);
+                this.workletNode.connect(analyser, i, 0);
+                this.analysers.push(analyser);
+            }
+
+            this.merger = this.context.createChannelMerger(4);
+
+            // merge the channel 0+3 in left channel, 1+2 in right channel
+            this.workletNode.connect(this.merger, 0, 0);
+            this.workletNode.connect(this.merger, 1, 1);
+            this.workletNode.connect(this.merger, 2, 1);
+            this.workletNode.connect(this.merger, 3, 0);
+
+            // apply a filter
             this.filterNode = this.context.createBiquadFilter();
             this.filterNode.frequency.value = 22050;
 
-            this.workletNode.connect(this.filterNode);
+            // finally apply the lowpass filter and send audio to destination
+            this.merger.connect(this.filterNode);
             this.filterNode.connect(this.context.destination);
-
-            // split channels and connect each channel's output
-            // to a separate analyzer
-            this.analysisSplitter = this.context.createChannelSplitter(2);
-            this.filterNode.connect(this.analysisSplitter);
-
-            this.analyserLeft = this.context.createAnalyser();
-
-            this.analyserLeft.fftSize = Math.pow(2, 11);
-            this.analyserLeft.minDecibels = -96;
-            this.analyserLeft.maxDecibels = 0;
-            this.analyserLeft.smoothingTimeConstant = 0.85;
-
-            this.analyserRight = this.context.createAnalyser();
-            this.analyserRight.fftSize = Math.pow(2, 11);
-            this.analyserRight.minDecibels = -96;
-            this.analyserRight.maxDecibels = 0;
-            this.analyserRight.smoothingTimeConstant = 0.85;
-
-            this.analysisSplitter.connect(this.analyserLeft, 0);
-            this.analysisSplitter.connect(this.analyserRight, 1);
         });
     },
 
     setLowPass(activate) {
         this.filterNode.frequency.value = activate && 6000 || 22050;
+    },
+
+    setSpeed(speedUp) {
+        this.postMessage({
+            message: 'speedUp',
+            speedUp: speedUp
+        });
     },
 
     handleMessage(message) {
@@ -189,22 +205,36 @@ const ModPlayer = {
     renderScope() {
         const toRender = [
             {
-                label: "Left",
-                analyser: this.analyserLeft,
+                label: "Chan 1",
+                analyser: this.analysers[0],
                 style: "rgba(53, 233, 255, 1)",
                 edgeThreshold: 0,
                 active: true
             },
             {
-                label: "Right",
-                analyser: this.analyserRight,
+                label: "Chan 2",
+                analyser: this.analysers[1],
+                style: "rgba(53, 233, 255, 1)",
+                edgeThreshold: 0,
+                active: true
+            },
+            {
+                label: "Chan 3",
+                analyser: this.analysers[2],
+                style: "rgba(53, 233, 255, 1)",
+                edgeThreshold: 0,
+                active: true
+            },
+            {
+                label: "Chan 4",
+                analyser: this.analysers[3],
                 style: "rgba(53, 233, 255, 1)",
                 edgeThreshold: 0,
                 active: true
             }];
 
         this.ctx.fillStyle = "transparent";
-        this.ctx.clearRect(0, 0, this.canvasWidth * 2, this.canvasHeight);
+        this.ctx.clearRect(0, 0, this.canvasWidth * 4, this.canvasHeight);
 
         toRender.forEach(({ analyser, style = "rgb(43, 156, 212)", edgeThreshold = 0 }, i) => {
             if (analyser === undefined) { return; }
@@ -214,10 +244,10 @@ const ModPlayer = {
 
             analyser.getFloatTimeDomainData(timeData);
 
-            this.ctx.lineWidth = 2;
             this.ctx.strokeStyle = style;
+            this.ctx.fillStyle = style;
 
-            this.ctx.beginPath();
+            // this.ctx.beginPath();
 
             while (timeData[risingEdge] > 0 &&
                 risingEdge <= this.canvasWidth &&
@@ -238,17 +268,18 @@ const ModPlayer = {
 
             for (let x = risingEdge; x < timeData.length && x - risingEdge < this.canvasWidth; x++) {
                 const y = this.canvasHeight - (((timeData[x] + 1) / 2) * this.canvasHeight);
-                this.ctx.lineTo(x - risingEdge + i * this.canvasWidth, y);
+                // this.ctx.moveTo(x - risingEdge + i * this.canvasWidth, y-1);
+                // this.ctx.lineTo(x - risingEdge + i * this.canvasWidth, y);
+                this.ctx.fillRect(x - risingEdge + i * this.canvasWidth, y, 1, 1);
             }
 
-            this.ctx.stroke();
-        });
+            // this.ctx.stroke();
 
-        // L/R
-        this.ctx.fillStyle = "rgba(255,255,255,0.7)";
-        this.ctx.font = "11px Verdana";
-        this.ctx.textAlign = "left";
-        this.ctx.fillText("L", 5, 15);
-        this.ctx.fillText("R", 496, 15);
+            // Chan number
+            this.ctx.fillStyle = "rgba(255,255,255,0.9)";
+            this.ctx.font = "12px Verdana";
+            this.ctx.textAlign = "left";
+            this.ctx.fillText(i.toString(), 2 + i*this.canvasWidth, 15);
+        });
     }
 }

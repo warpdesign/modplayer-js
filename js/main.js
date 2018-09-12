@@ -6,7 +6,11 @@ var moduleList = [
     { file: 'desert_strike.mod', author: 'Jason Whitley' },
     { file: 'LotusII.mod', author: 'Barry Leitch' },
     { file: 'projectx.mod', author: 'Allister Brimble' },
-    { file: 'silkworm.mod', author: 'Barry Leitch' }
+    { file: 'silkworm.mod', author: 'Barry Leitch' },
+    { file: 'tax_haven_dry_hump.mod', author: 'Barry Leitch' },
+    { file: 'h0ffman_-_drop_the_panic.mod', author: 'toto' },
+    { file: 'slinger.mod', author: 'toto' },
+    { file: 'variations.mod', author: 'toto' }
 ],
     selectedMod = 0,
     prefix = 'audio/',
@@ -84,23 +88,14 @@ window.onload = function () {
         });
     });
 
-    document.querySelector('.channel_control').addEventListener('click', (event) => {
-        if (event.target.id && event.target.id.match(/channel-toggle/)) {
-            var channel = event.target.id.substr(-1, 1),
-                checked = event.target.hasAttribute('checked');
+    canvas.addEventListener('click', (event) => {
+        const width = canvas.width / 4,
+            channel = Math.floor(event.offsetX / width);
 
-            channelsPlaying[channel - 1] = !channelsPlaying[channel - 1];
+        channelsPlaying[channel] = !channelsPlaying[channel];
 
-            ModPlayer.setPlayingChannels(channelsPlaying);
-        }
+        ModPlayer.setPlayingChannels(channelsPlaying);
     });
-
-    canvas.onclick = () => {
-        effect++;
-        if (effect >= effects.length) {
-            effect = 0;
-        }
-    };
 
     function drawBars(amplitudeArray) {
         var bufferLength = amplitudeArray.length;
@@ -171,7 +166,8 @@ window.onload = function () {
         canvas: canvas
     }).then(() => {
         loadModule(selectedMod, false);
-    }).catch((err) => {
+        }).catch((err) => {
+            debugger;
         toast.show(`Error loading module: ${err}`);
     });
 }
