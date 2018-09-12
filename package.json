@@ -1,0 +1,33 @@
+{
+  "name": "modplayer-js",
+  "version": "1.0.0",
+  "description": "JavaScript player for SoundTracker/Noisetracker mod files using the webaudio AudioWorklet API.",
+  "main": "js/modplayer.js",
+  "scripts": {
+    "build": "microbundle",
+    "dev": "microbundle watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/warpdesign/modplayer-js.git"
+  },
+  "keywords": [
+    "mod",
+    "tracker",
+    "webaudio",
+    "soundtracker",
+    "sample",
+    "es6",
+    "audioworklet"
+  ],
+  "author": "Nicolas Ramz",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/warpdesign/modplayer-js/issues"
+  },
+  "homepage": "https://github.com/warpdesign/modplayer-js#readme",
+  "devDependencies": {
+    "microbundle": "^0.6.0"
+  }
+}

@@ -28,6 +28,19 @@ const PaulaPeriods = new Float32Array([
     428, 404, 381, 360, 339, 320, 302, 285, 269, 254, 240, 226,
     214, 202, 190, 180, 170, 160, 151, 143, 135, 127, 120, 113]);
 
+
+/**
+ * Vibrato waveforms, used for 0x4 effect
+ */
+const waveForms = new Array(4);
+
+// Sin waveform
+waveForms[0] = new Float32Array(64);
+// an amplitude of 64 is supposed to be enough
+for (let i = 0; i < waveForms[0].length; ++i) {
+    waveForms[0][i] = 64 * Math.sin(Math.PI * 2 * (i / 64));
+}
+
 class PTModuleProcessor extends AudioWorkletProcessor{
     constructor() {
         // pattern data always starts at offset 1084
@@ -159,9 +172,11 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 slideTo: -1,
                 slideSpeed: 0,
                 delay: 0,
-                vform: -1,
+                vform: 0,
                 vdepth: 0,
                 vspeed: 0,
+                vpos: 0,
+                loopInitiated: false,
                 id: i
             };
             if (!this.channels[i]) {
@@ -327,6 +342,10 @@ class PTModuleProcessor extends AudioWorkletProcessor{
             this.position = 0;
         }
 
+        for (let i = 0; i < this.channels.length; ++i) {
+            this.channels[i].loopInitiated = false;
+        }
+
         this.pattern = this.positions[this.position];
 
         console.log('** position', this.position, 'pattern:', this.pattern);
@@ -349,6 +368,9 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 cmd = data[2 + offset] & 0xF,
                 cmdData = data[3 + offset];
             const channel = this.channels[i];
+
+            // if (channel.id === 2 && this.row > 3)
+            //     debugger;
 
             channel.delay = 0;
 
@@ -553,13 +575,28 @@ const Effects = {
             var depth = channel.data & 0x0f,
                 speed = (channel.data & 0xf0) >> 4;
 
+            // use previous values if speed or depth isn't set
             if (speed && depth) {
                 channel.vdepth = depth;
                 channel.vspeed = speed;
             }
-        } else {
-            console.warn('vibrato not implemented yet');
-            // need to advance here (and reset too ?)
+
+            // new note: reset vibrato position if retriggered is set
+            if (channel.vform > 3) {
+                channel.vpos = 0;
+            }
+        }
+
+        // get current waveform table
+        const table = waveForms[channel.vform & 0x3];
+        // alter the note's period
+        channel.period += (channel.vdepth * table[channel.vpos]) / 63.0;
+
+        // advance vpos at each tick
+        channel.vpos += channel.vspeed;
+        // wrap around
+        if (channel.vpos > 63) {
+            channel.vpos = channel.vpos - 64;
         }
     },
     /**
@@ -657,38 +694,40 @@ const Effects = {
         }
     },
     /**
-     * Toggle low-pass filter
+     * Set Vibrato waveform + retrigger
      */
-    0xE0(Module, channel) {
-        console.log('need to toggle lowPass', !!channel.data);
-        // TODO: handle this message in modplayer.js to activate the filter
-        Module.postMessage({
-            message: 'toggleLowPass',
-            data: {
-                activate: !!channel.data
-            }
-        });
+    0xE4(Module, channel) {
+        debugger;
+        if (!Module.ticks) {
+            // channel.vform = //
+        }
     },
     /**
      * Loop pattern
      */
     0xE6(Module, channel) {
-        debugger;
-        if (channel.data === 0) {
-            if (channel.loopCount) {
-                channel.loopStart = Module.row;
-                channel.loopCount--;
-                // last loop
+        if (!Module.ticks) {
+            // called with 0: this is the loop start point
+            if (channel.data === 0) {
+                if (!channel.loopInitiated) {
+                    channel.loopInitiated = true;
+                    channel.loopStart = Module.row;
+                    channel.loopCount = 0;
+                } else {
+                    if (channel.loops === channel.loopCount) {
+                        channel.loopInitiated = false;
+                    }
+                }
+            } else if (channel.loopInitiated) {
+                Module.rowJump = channel.loopStart;
                 if (!channel.loopCount) {
-                    channel.loopDone = true;
+                    // init loop count
+                    channel.loopCount = channel.data;
+                    channel.loops = 1;
+                } else {
+                    channel.loops++;
                 }
             }
-        } else if (!channel.loopDone) {
-            if (!channel.loopCount) {
-                channel.loopCount = channel.data;
-            }
-
-            channel.rowJump = channel.loopStart;
         }
     },
     /**
@@ -710,6 +749,17 @@ const Effects = {
             channel.volume += channel.data;
             if (channel.volume > 63) {
                 channel.volume = 63;
+            }
+        }
+    },
+    /**
+     * Decrease volume
+     */
+    0xEB(Module, channel) {
+        if (!Module.ticks) {
+            channel.volume -= channel.data;
+            if (channel.volume < 0) {
+                channel.volume = 0;
             }
         }
     },
@@ -749,5 +799,10 @@ const Effects = {
             // execute effect only once
             // channel.done = true;
         }
+    },
+    0xFFF() {
+
     }
 }
+
+console.time('')
