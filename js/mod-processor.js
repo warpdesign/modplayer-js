@@ -1,3 +1,4 @@
+console.log('hey2');
 const BinUtils = {
     readAscii(buffer, maxLength, offset = 0) {
         const uint8buf = new Uint8Array(buffer);
@@ -116,7 +117,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 }
             }
         } else {
-            const chans = outputs.length,
+            const chans = outputs[0].length,
                 bufLength = outputs[0][0].length;
             for (let chan = 0; chan < chans; ++chan) {
                 for (let i = 0; i < bufLength; ++i) {

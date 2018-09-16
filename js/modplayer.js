@@ -9,12 +9,13 @@ const ModPlayer = {
     ready: true,
     loaded: false,
     isXbox: !!navigator.userAgent.match(/Xbox One/),
-    audioWorkletSupport: !!AudioWorkletNode.toString().match(/native code/),
     init(options) {
         this.canvas = options.canvas;
         this.ctx = this.canvas.getContext('2d');
+        this.audioWorkletSupport = options.audioWorkletSupport;
         this.canvasWidth = (this.canvas.width) / 4;
         this.canvasHeight = this.canvas.height;
+        this.channels = [true, true, true, true];
 
         return this.createContext();
     },
@@ -96,7 +97,6 @@ const ModPlayer = {
                 analyser.minDecibels = -90;
                 analyser.maxDecibels = -10;
                 analyser.smoothingTimeConstant = 0.65;
-                console.log('connecting analyzer to worklet output', i);
                 if (this.audioWorkletSupport) {
                     this.workletNode.connect(analyser, i, 0);
                 } else {
@@ -144,6 +144,9 @@ const ModPlayer = {
                 event.data = message.data.data;
                 event.data.wasPlaying = this.wasPlaying;
                 document.dispatchEvent(event);
+                if (!this.playing) {
+                    this.renderScope();
+                }
                 break;
 
             case 'toggleLowPass':
@@ -172,7 +175,7 @@ const ModPlayer = {
 
             this.sendPlayingStatus();
 
-            // this.render();
+            this.render();
         } else {
             console.log('No module loaded');
         }
@@ -208,6 +211,12 @@ const ModPlayer = {
             message: 'setPlayingChannels',
             channels: channels
         });
+
+        this.channels = channels;
+
+        if (!this.playing) {
+            this.renderScope();
+        }
     },
 
     render() {
@@ -221,41 +230,74 @@ const ModPlayer = {
      * render adapted from https://github.com/acarabott/audio-dsp-playground (MIT Licence)
      */
     renderScope() {
-        const toRender = [
-            {
-                label: "Chan 1",
-                analyser: this.analysers[0],
-                style: "rgba(53, 233, 255, 1)",
-                edgeThreshold: 0,
-                active: true
-            },
-            {
-                label: "Chan 2",
-                analyser: this.analysers[1],
-                style: "rgba(53, 233, 255, 1)",
-                edgeThreshold: 0,
-                active: true
-            },
-            {
-                label: "Chan 3",
-                analyser: this.analysers[2],
-                style: "rgba(53, 233, 255, 1)",
-                edgeThreshold: 0,
-                active: true
-            },
-            {
-                label: "Chan 4",
-                analyser: this.analysers[3],
-                style: "rgba(53, 233, 255, 1)",
-                edgeThreshold: 0,
-                active: true
-            }];
+        let toRender;
+
+        if (this.audioWorkletSupport) {
+            toRender = [
+                {
+                    label: "chan 1",
+                    analyser: this.analysers[0],
+                    style: "rgba(53, 233, 255, 1)",
+                    edgeThreshold: 0,
+                    pos: 0,
+                },
+                {
+                    label: "chan 2",
+                    analyser: this.analysers[1],
+                    style: "rgba(53, 233, 255, 1)",
+                    edgeThreshold: 0,
+                    pos: 1
+                },
+                {
+                    label: "chan 3",
+                    analyser: this.analysers[2],
+                    style: "rgba(53, 233, 255, 1)",
+                    edgeThreshold: 0,
+                    pos: 2
+                },
+                {
+                    label: "chan 4",
+                    analyser: this.analysers[3],
+                    style: "rgba(53, 233, 255, 1)",
+                    edgeThreshold: 0,
+                    pos: 3
+                }];
+        } else {
+            toRender = [
+                {
+                    label: "left",
+                    analyser: this.analysers[0],
+                    style: "rgba(53, 233, 255, 1)",
+                    edgeThreshold: 0,
+                    pos: 0
+                },
+                {
+                    label: "right",
+                    analyser: this.analysers[1],
+                    style: "rgba(53, 233, 255, 1)",
+                    edgeThreshold: 0,
+                    pos: 3
+                }];
+        }
 
         this.ctx.fillStyle = "transparent";
         this.ctx.clearRect(0, 0, this.canvasWidth * 4, this.canvasHeight);
 
-        toRender.forEach(({ analyser, style = "rgb(43, 156, 212)", edgeThreshold = 0 }, i) => {
+        toRender.forEach(({ analyser, label, style = "rgb(43, 156, 212)", edgeThreshold = 0, pos }, i) => {
             if (analyser === undefined) { return; }
+
+
+            this.ctx.font = "12px Verdana";
+            this.ctx.fillStyle = "rgba(255,255,255,0.8)";
+            this.ctx.textAlign = "left";
+            // Chan number
+            this.ctx.fillText(label, 46 + pos * this.canvasWidth, 15);
+
+            if (!this.channels[i]) {
+                this.ctx.font = "18px Arial";
+                this.ctx.fillText('MUTE', 40 + pos * this.canvasWidth, 70);
+                return;
+            }
 
             const timeData = new Float32Array(analyser.frequencyBinCount);
             let risingEdge = 0;
@@ -288,16 +330,10 @@ const ModPlayer = {
                 const y = this.canvasHeight - (((timeData[x] + 1) / 2) * this.canvasHeight);
                 // this.ctx.moveTo(x - risingEdge + i * this.canvasWidth, y-1);
                 // this.ctx.lineTo(x - risingEdge + i * this.canvasWidth, y);
-                this.ctx.fillRect(x - risingEdge + i * this.canvasWidth, y, 1, 1);
+                this.ctx.fillRect(x - risingEdge + pos * this.canvasWidth, y, 1, 1);
             }
 
             // this.ctx.stroke();
-
-            // Chan number
-            this.ctx.fillStyle = "rgba(255,255,255,0.9)";
-            this.ctx.font = "12px Verdana";
-            this.ctx.textAlign = "left";
-            this.ctx.fillText(i.toString(), 2 + i*this.canvasWidth, 15);
         });
     }
 }

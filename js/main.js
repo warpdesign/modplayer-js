@@ -18,12 +18,8 @@ var moduleList = [
 
 window.onload = function () {
     var canvas = document.getElementById('visualizer'),
-        effect = 1,
-        effects = [],
-        ctx = canvas.getContext('2d'),
-        canvasWidth = canvas.width,
-        canvasHeight = canvas.height,
-        channelsPlaying = [true, true, true, true];
+        channelsPlaying = [true, true, true, true],
+        audioWorkletSupport = !!AudioWorkletNode.toString().match(/native code/);
 
     toast = new Toast('info-snackbar');
 
@@ -82,92 +78,64 @@ window.onload = function () {
         document.querySelector('.mdl-layout__obfuscator').click();
     });
 
-    document.addEventListener('analyzer_ready', (event) => {
-        requestAnimationFrame(() => {
-            effects[effect](event.data);
-        });
-    });
-
     canvas.addEventListener('click', (event) => {
         const width = canvas.width / 4,
             channel = Math.floor(event.offsetX / width);
 
-        channelsPlaying[channel] = !channelsPlaying[channel];
+        // audioworklet mode shows the four channels
+        // scriptprocessor fallback groups 0-3 and 1-2 channels visually
+        if (audioWorkletSupport) {
+            channelsPlaying[channel] = !channelsPlaying[channel];
+        } else {
+            if (!channel) {
+                channelsPlaying[0] = !channelsPlaying[0];
+                channelsPlaying[3] = !channelsPlaying[3];
+            } else if (channel === 3) {
+                channelsPlaying[1] = !channelsPlaying[1];
+                channelsPlaying[2] = !channelsPlaying[2];
+            }
+        }
 
         ModPlayer.setPlayingChannels(channelsPlaying);
     });
 
-    function drawBars(amplitudeArray) {
-        var bufferLength = amplitudeArray.length;
-        ctx.fillStyle = 'rgb(0, 0, 0)';
-        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+    // function drawBars(amplitudeArray) {
+    //     var bufferLength = amplitudeArray.length;
+    //     ctx.fillStyle = 'rgb(0, 0, 0)';
+    //     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-        var barWidth = (canvasWidth / bufferLength) * 2.5 - 1;
-        barWidth *= 2;
-        var barHeight;
-        var x = 0;
+    //     var barWidth = (canvasWidth / bufferLength) * 2.5 - 1;
+    //     barWidth *= 2;
+    //     var barHeight;
+    //     var x = 0;
 
-        for (var i = 0; i < bufferLength; i++) {
-            barHeight = amplitudeArray[i];
+    //     for (var i = 0; i < bufferLength; i++) {
+    //         barHeight = amplitudeArray[i];
 
-            ctx.fillStyle = 'rgb(' + (barHeight + 100) + ',50,50)';
-            ctx.fillRect(x, canvasHeight - barHeight / 2, barWidth, barHeight / 2);
+    //         ctx.fillStyle = 'rgb(' + (barHeight + 100) + ',50,50)';
+    //         ctx.fillRect(x, canvasHeight - barHeight / 2, barWidth, barHeight / 2);
 
-            x += barWidth;
-        }
-    }
+    //         x += barWidth;
+    //     }
+    // }
 
-    function drawOscillo(amplitudeArray) {
-        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+    // function drawOscillo(amplitudeArray) {
+    //     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-        for (var i = 0; i < amplitudeArray.length; i++) {
-            var value = amplitudeArray[i] / 256;
-            var y = canvasHeight - (canvasHeight * value) - 1;
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(i, y, 1, 1);
-        }
-    }
-
-    function drawOscillo2(amplitudeArray) {
-        var bufferLength = amplitudeArray.length;
-
-        ctx.fillStyle = "rgb(200, 200, 200)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = "rgb(0, 0, 0)";
-
-        ctx.beginPath();
-
-        var sliceWidth = canvas.width * 1.0 / bufferLength;
-        var x = 0;
-
-        for (var i = 0; i < bufferLength; i++) {
-
-            var v = amplitudeArray[i] / 128.0;
-            var y = v * canvas.height / 2;
-
-            if (i === 0) {
-                ctx.moveTo(x, y);
-            } else {
-                ctx.lineTo(x, y);
-            }
-
-            x += sliceWidth;
-        }
-
-        ctx.lineTo(canvas.width, canvas.height / 2);
-        ctx.stroke();
-    }
-
-    effects.push(drawBars, drawOscillo);
+    //     for (var i = 0; i < amplitudeArray.length; i++) {
+    //         var value = amplitudeArray[i] / 256;
+    //         var y = canvasHeight - (canvasHeight * value) - 1;
+    //         ctx.fillStyle = '#000000';
+    //         ctx.fillRect(i, y, 1, 1);
+    //     }
+    // }
 
     ModPlayer.init({
-        canvas: canvas
+        canvas: canvas,
+        audioWorkletSupport: audioWorkletSupport
     }).then(() => {
         loadModule(selectedMod, false);
-        }).catch((err) => {
-            debugger;
+    }).catch((err) => {
         toast.show(`Error loading module: ${err}`);
     });
 }
