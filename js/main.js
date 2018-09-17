@@ -1,12 +1,29 @@
 var moduleList = [
-    { file: 'agony.mod', author: 'Tim Wright' },
-    { file: 'all_that_she_wants.mod', author: 'Crossair' },
-    { file: 'bigtime.mod', author: 'ISO/Axis Group' },
-    { file: 'cannonfodder.mod', author: 'John Hare' },
-    { file: 'desert_strike.mod', author: 'Jason Whitley' },
-    { file: 'LotusII.mod', author: 'Barry Leitch' },
-    { file: 'projectx.mod', author: 'Allister Brimble' },
-    { file: 'silkworm.mod', author: 'Barry Leitch' }
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=91286#faggots_universe.mod', author: 'Deelite' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=168739#neurodancer_-_quasar.mod', author: 'Neurodancer' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=183672#tax_haven_dry_hump.mod', author: 'Curt Cool' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=182057#h0ffman_-_drop_the_panic.mod', author: 'h0ffman' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=168122#prodigy_-_downtown.mod', author: 'prodigy of oops' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=172266#hoffman_-_the_hunter.mod', author: 'h0ffman' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=65280#variations.mod', author: 'jogeir-liljedahl' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=166686#wiklund_-_bonfire.mod', author: 'Wiklund' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=55058#pinball_illusions.mod', author: 'Olof Gustafsson' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=167668#vinnie_-_sweet_dreams.mod', author: 'vinnie/spaceballs' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=172271#subi-king_of_boggle.mod', author: 'Subi/DESiRE' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=171416#bass-1107.mod', author: 'Noiseless (cm/ao)' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=168110#punnik_-_drum_bass.mod', author: 'punnik' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=171616#dan_-_childs_philozophy.mod', author: 'dan / picco' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=119303#boesendorfer_p_s_s.mod', author: 'romeoknight' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=170637#ghost_in_the_cli.mod', author: 'h0ffman' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=158057#alf_-_no-mercy.mod', author: 'alf/vtl' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=105709#trans_atlantic.mod', author: 'Lizardking'},
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=124303#agony_intro.mod', author: 'Tim Wright' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=98051#big_time_sensuality.mod', author: 'ISO/Axis Group' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=34568#CANNONFO.MOD', author: 'John Hare' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=68835#desert_strike.mod', author: 'Jason Whitley' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=87180#lotus2-title.mod', author: 'Barry Leitch' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=56660#projectx.mod', author: 'Allister Brimble' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=83115#silkwormtitle.mod', author: 'Barry Leitch' }
 ],
     selectedMod = 0,
     prefix = 'audio/',
@@ -14,17 +31,16 @@ var moduleList = [
 
 window.onload = function () {
     var canvas = document.getElementById('visualizer'),
-        effect = 1,
-        effects = [],
-        ctx = canvas.getContext('2d'),
-        canvasWidth = canvas.width,
-        canvasHeight = canvas.height,
-        channelsPlaying = [true, true, true, true];
+        channelsPlaying = [true, true, true, true],
+        audioWorkletSupport = !!AudioWorkletNode.toString().match(/native code/);
 
     toast = new Toast('info-snackbar');
 
     document.addEventListener('moduleLoaded', (event) => {
-        toast.show(`Module loaded: ${moduleList[selectedMod].file}`);
+        const split = moduleList[selectedMod].file.split('#'),
+            name = split.length > 1 && split[1] || split[0];
+
+        toast.show(`Module loaded: ${name}`);
 
         const samples = event.data.samples;
         let str = '';
@@ -37,7 +53,7 @@ window.onload = function () {
         document.querySelector('.sample-list').innerHTML = str;
 
         document.querySelector('.song-title').innerText = event.data.title;
-        document.querySelector('.title').innerText = moduleList[selectedMod].file;
+        document.querySelector('.title').innerText = name;
         document.querySelector('.author').innerText = moduleList[selectedMod].author;
         document.querySelector('.song-length').innerText = event.data.length;
         document.querySelector('.song-samples').innerText = event.data.samples.length;
@@ -65,7 +81,9 @@ window.onload = function () {
         if (i === selectedMod) {
             options += ' selected';
         }
-        options += `">${module.file}</a>`;
+        const split = module.file.split('#'),
+            name = split.length > 1 && split[1] || split[0];
+        options += `">${name}</a>`;
     });
 
     modNav.innerHTML = options;
@@ -78,97 +96,61 @@ window.onload = function () {
         document.querySelector('.mdl-layout__obfuscator').click();
     });
 
-    document.addEventListener('analyzer_ready', (event) => {
-        requestAnimationFrame(() => {
-            effects[effect](event.data);
-        });
-    });
+    canvas.addEventListener('click', (event) => {
+        const width = canvas.width / 4,
+            channel = Math.floor(event.offsetX / width);
 
-    document.querySelector('.channel_control').addEventListener('click', (event) => {
-        if (event.target.id && event.target.id.match(/channel-toggle/)) {
-            var channel = event.target.id.substr(-1, 1),
-                checked = event.target.hasAttribute('checked');
-
-            channelsPlaying[channel - 1] = !channelsPlaying[channel - 1];
-
-            ModPlayer.setPlayingChannels(channelsPlaying);
-        }
-    });
-
-    canvas.onclick = () => {
-        effect++;
-        if (effect >= effects.length) {
-            effect = 0;
-        }
-    };
-
-    function drawBars(amplitudeArray) {
-        var bufferLength = amplitudeArray.length;
-        ctx.fillStyle = 'rgb(0, 0, 0)';
-        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-        var barWidth = (canvasWidth / bufferLength) * 2.5 - 1;
-        barWidth *= 2;
-        var barHeight;
-        var x = 0;
-
-        for (var i = 0; i < bufferLength; i++) {
-            barHeight = amplitudeArray[i];
-
-            ctx.fillStyle = 'rgb(' + (barHeight + 100) + ',50,50)';
-            ctx.fillRect(x, canvasHeight - barHeight / 2, barWidth, barHeight / 2);
-
-            x += barWidth;
-        }
-    }
-
-    function drawOscillo(amplitudeArray) {
-        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-
-        for (var i = 0; i < amplitudeArray.length; i++) {
-            var value = amplitudeArray[i] / 256;
-            var y = canvasHeight - (canvasHeight * value) - 1;
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(i, y, 1, 1);
-        }
-    }
-
-    function drawOscillo2(amplitudeArray) {
-        var bufferLength = amplitudeArray.length;
-
-        ctx.fillStyle = "rgb(200, 200, 200)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = "rgb(0, 0, 0)";
-
-        ctx.beginPath();
-
-        var sliceWidth = canvas.width * 1.0 / bufferLength;
-        var x = 0;
-
-        for (var i = 0; i < bufferLength; i++) {
-
-            var v = amplitudeArray[i] / 128.0;
-            var y = v * canvas.height / 2;
-
-            if (i === 0) {
-                ctx.moveTo(x, y);
-            } else {
-                ctx.lineTo(x, y);
+        // audioworklet mode shows the four channels
+        // scriptprocessor fallback groups 0-3 and 1-2 channels visually
+        if (audioWorkletSupport) {
+            channelsPlaying[channel] = !channelsPlaying[channel];
+        } else {
+            if (!channel) {
+                channelsPlaying[0] = !channelsPlaying[0];
+                channelsPlaying[3] = !channelsPlaying[3];
+            } else if (channel === 3) {
+                channelsPlaying[1] = !channelsPlaying[1];
+                channelsPlaying[2] = !channelsPlaying[2];
             }
-
-            x += sliceWidth;
         }
 
-        ctx.lineTo(canvas.width, canvas.height / 2);
-        ctx.stroke();
-    }
+        ModPlayer.setPlayingChannels(channelsPlaying);
+    });
 
-    effects.push(drawBars, drawOscillo);
+    // function drawBars(amplitudeArray) {
+    //     var bufferLength = amplitudeArray.length;
+    //     ctx.fillStyle = 'rgb(0, 0, 0)';
+    //     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+    //     var barWidth = (canvasWidth / bufferLength) * 2.5 - 1;
+    //     barWidth *= 2;
+    //     var barHeight;
+    //     var x = 0;
+
+    //     for (var i = 0; i < bufferLength; i++) {
+    //         barHeight = amplitudeArray[i];
+
+    //         ctx.fillStyle = 'rgb(' + (barHeight + 100) + ',50,50)';
+    //         ctx.fillRect(x, canvasHeight - barHeight / 2, barWidth, barHeight / 2);
+
+    //         x += barWidth;
+    //     }
+    // }
+
+    // function drawOscillo(amplitudeArray) {
+    //     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+    //     for (var i = 0; i < amplitudeArray.length; i++) {
+    //         var value = amplitudeArray[i] / 256;
+    //         var y = canvasHeight - (canvasHeight * value) - 1;
+    //         ctx.fillStyle = '#000000';
+    //         ctx.fillRect(i, y, 1, 1);
+    //     }
+    // }
 
     ModPlayer.init({
-        canvas: canvas
+        canvas: canvas,
+        audioWorkletSupport: audioWorkletSupport
     }).then(() => {
         loadModule(selectedMod, false);
     }).catch((err) => {
@@ -211,7 +193,7 @@ function loadModule(moduleIndex, hideDrawer = true) {
         document.querySelector('a.mdl-navigation__link.selected').classList.toggle('selected');
         document.querySelector(`a.mdl-navigation__link.mod_${moduleIndex}`).classList.add('selected');
 
-        ModPlayer.loadModule(prefix + moduleName)
+        ModPlayer.loadModule(moduleName.match(/^http/) ? moduleName : prefix + moduleName)
             .catch(err => {
                 toast.show(`Error loading module: ${err}`);
             });

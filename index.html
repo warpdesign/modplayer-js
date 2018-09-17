@@ -52,7 +52,7 @@
         }
 
         .mdl-mini-footer--link-list li, .mdl-mini-footer__link-list li{
-            margin-right: 32px;
+            margin: 0 16px;
         }
 
         .author{
@@ -61,6 +61,8 @@
 
         canvas{
             width:100%;
+            height:100px;
+            cursor:pointer;
         }
     </style>
     <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
@@ -125,35 +127,12 @@
                     .mdl-card__title{
                         position:relative;
                     }
-
-                    .channel_control{
-                        position:absolute;
-                        top:10px;
-                    }
                 </style>
 
                 <div class="demo-card-wide mdl-card mdl-shadow--2dp">
                     <div class="mdl-card__title">
                         <canvas width="512" height="128" id="visualizer"></canvas>
                         <h2 class="mdl-card__title-text" title="Click here to load another module"><div><i class="material-icons">audiotrack</i></div><div><span class="title"></span><br />by&nbsp;<span class="author"></span></div></h2>
-                        <div class="channel_control">
-                            <label class="mdl-icon-toggle mdl-js-icon-toggle mdl-js-ripple-effect" for="channel-toggle-1" title="Click to mute/unmute channel 1">
-                                <input type="checkbox" id="channel-toggle-1" class="mdl-icon-toggle__input" checked>
-                                <i class="mdl-icon-toggle__label material-icons">volume_up</i>
-                            </label>
-                            <label class="mdl-icon-toggle mdl-js-icon-toggle mdl-js-ripple-effect" for="channel-toggle-2" title="Click to mute/unmute channel 2">
-                                <input type="checkbox" id="channel-toggle-2" class="mdl-icon-toggle__input" checked>
-                                <i class="mdl-icon-toggle__label material-icons">volume_up</i>
-                            </label>
-                            <label class="mdl-icon-toggle mdl-js-icon-toggle mdl-js-ripple-effect" for="channel-toggle-3" title="Click to mute/unmute channel 3">
-                                <input type="checkbox" id="channel-toggle-3" class="mdl-icon-toggle__input" checked>
-                                <i class="mdl-icon-toggle__label material-icons">volume_up</i>
-                            </label>
-                            <label class="mdl-icon-toggle mdl-js-icon-toggle mdl-js-ripple-effect" for="channel-toggle-4" title="Click to mute/unmute channel 4">
-                                <input type="checkbox" id="channel-toggle-4" class="mdl-icon-toggle__input" checked>
-                                <i class="mdl-icon-toggle__label material-icons">volume_up</i>
-                            </label>
-                        </div>
                     </div>
                     <div class="mdl-card__supporting-text">
                         <div class="mdl-tabs mdl-js-tabs mdl-js-ripple-effect">

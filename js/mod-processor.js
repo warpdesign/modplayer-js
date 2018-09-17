@@ -54,6 +54,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         switch (event.data.message) {
             case 'init':
                 this.mixingRate = event.data.mixingRate;
+                this.audioWorkletSupport = event.data.audioWorkletSupport;
                 break;
 
             case 'loadModule':
@@ -81,6 +82,12 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                     }
                 });
                 break;
+
+            case 'speedUp':
+                console.log('speed up', event.data.speedUp);
+                this.speedUp = event.data.speedUp;
+                this.calcTickSpeed();
+                break;
         }
     }
 
@@ -90,21 +97,31 @@ class PTModuleProcessor extends AudioWorkletProcessor{
 
     process(inputs, outputs, params) {
         if (this.ready && this.playing) {
-            this.mix(outputs[0]);
+            this.mix(outputs);
         } else {
-            this.emptyOutputBuffer(outputs[0]);
+            this.emptyOutputBuffer(outputs);
         }
 
         return true;
     }
 
-    emptyOutputBuffer(buffers) {
-        const length = buffers[0].length,
-            chans = buffers.length;
+    emptyOutputBuffer(outputs) {
+        if (this.audioWorkletSupport) {
+            const chans = outputs.length,
+                bufLength = outputs[0][0].length;
 
-        for (let i = 0; i < length; ++i) {
             for (let chan = 0; chan < chans; ++chan) {
-                buffers[chan][i] = 0.0;
+                for (let i = 0; i < bufLength; ++i) {
+                    outputs[chan][0][i] = 0.0;
+                }
+            }
+        } else {
+            const chans = outputs[0].length,
+                bufLength = outputs[0][0].length;
+            for (let chan = 0; chan < chans; ++chan) {
+                for (let i = 0; i < bufLength; ++i) {
+                    outputs[0][chan][i] = 0.0;
+                }
             }
         }
     }
@@ -123,6 +140,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         this.bpm = 125;
         // number of ticks before playing next pattern row
         this.speed = 6;
+        this.speedUp = 1;
         this.position = 0;
         this.pattern = 0;
         this.row = 0;
@@ -228,29 +246,39 @@ class PTModuleProcessor extends AudioWorkletProcessor{
      * Calculates the number of samples needed
      */
     calcTickSpeed() {
-        this.samplesPerTick = ((this.mixingRate * 60) / this.bpm) / 24;
+        this.samplesPerTick = ((this.mixingRate * 60) / (this.bpm * this.speedUp)) / 24;
     }
 
     /**
      * ProTracker audio mixer
      *
-     * @param {Float32Array} buffer Output buffer that should be filled with PCM data
+     * @param {Float32Array} outputs Output buffer that should be filled with PCM data
      *
      * This method is called each time the buffer should be filled with data
      */
-    mix(buffers) {
-        const length = buffers[0].length;
+    mix(outputs) {
+        const length = this.audioWorkletSupport && outputs[0][0].length || outputs[0][0].length;
 
         for (let i = 0; i < length; ++i) {
-            buffers[0][i] = 0.0;
-            buffers[1][i] = 0.0;
-
+            // buffers[0][i] = 0.0;
+            // buffers[1][i] = 0.0;
             let outputChannel = 0;
+
+            if (this.audioWorkletSupport) {
+                outputs[0][0][i] = 0.0;
+                outputs[1][0][i] = 0.0;
+                outputs[2][0][i] = 0.0;
+                outputs[3][0][i] = 0.0;
+            } else {
+                outputs[0][0][i] = 0.0;
+                outputs[0][1][i] = 0.0;
+            }
 
             // playing speed test
             this.tick();
             for (let chan = 0; chan < this.channels.length; ++chan) {
                 const channel = this.channels[chan];
+                const buffer = this.audioWorkletSupport ? outputs[chan][0] : outputs[0][outputChannel];
                 // select left/right output depending on module channel:
                 // voices 0,3 go to left channel, 1,2 go to right channel
                 outputChannel = outputChannel ^ (chan & 1);
@@ -266,7 +294,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                     const sample = this.samples[channel.sample];
 
                     // actually mix audio
-                    buffers[outputChannel][i] += (sample.data[Math.floor(channel.samplePos)] * channel.volume) / 64.0;
+                    buffer[i] += (sample.data[Math.floor(channel.samplePos)] * channel.volume) / 64.0;
 
                     const sampleSpeed = 7093789.2 / ((channel.period * 2) * this.mixingRate);
                     channel.samplePos += sampleSpeed;
@@ -327,7 +355,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
 
                 this.decodeRow();
 
-                console.log('** next row !', this.row.toString(16).padStart(2, "0"));
+                // console.log('** next row !', this.row.toString(16).padStart(2, "0"));
             }
         }
     }
@@ -637,10 +665,8 @@ const Effects = {
                 y = channel.data & 0x0F;
 
             if (!y) {
-                // console.log('volume slide', x);
                 channel.volume += x;
             } else if (!x) {
-                // console.log('volume slide', -y);
                 channel.volume -= y;
             }
 
@@ -669,9 +695,7 @@ const Effects = {
             channel.volume = channel.data;
             if (channel.volume > 63) {
                 channel.volume = 63;
-            }/* else {
-                 channel.id === 2 && console.log('volume set to', channel.volume);
-            }*/
+            }
         }
     },
     /**
@@ -689,7 +713,6 @@ const Effects = {
     0xE0(Module, channel) {
         if (!Module.ticks) {
             console.log('need to toggle lowPass', !!channel.data);
-            // TODO: handle this message in modplayer.js to activate the filter
             Module.toggleLowPass(!!channel.data);
         }
     },
@@ -796,8 +819,6 @@ const Effects = {
                 Module.bpm = channel.data;
                 Module.calcTickSpeed();
             }
-            // execute effect only once
-            // channel.done = true;
         }
     },
     0xFFF() {
