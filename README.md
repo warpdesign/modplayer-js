@@ -25,11 +25,11 @@ Modplayer-js will fall back to the deprecated `ScriptProcessorNode` API in these
 - Amiga 4 channel Sountracker/Noisetracker mod files with 4 channels and 15-31 instruments
 - Stereo playback (channels 0 & 3 goes to the left chan, 1 & 2 to the right, just like on a real Amiga)
 - LowPass filter (not sure it sounds right)
-- Left/Right Spectrum vizualizers
-- Ability to mute any of the 4 module channels
-- Includes 8 Module files from the Amiga-era
+- Individual Spectrum vizualizers for each channel (AudioWorklet mode only)
+- Ability to mute any of the 4 module channels (AudioWorklet only)
+- 26 great modules of various styles and times are downloaded from [The Mod Archive](https://modarchive.org)
 
-Most note effects should be supported, including extended ones. Only effect not implemented is `Vibrato (0x4 & 0x6)`.
+Most note effects should be supported, including extended ones.
 
 # Dependencies
 
@@ -41,19 +41,6 @@ ModPlayer JS makes use of the following piece of software:
  - get-float-time-domain-data was written by [github.com/mohayonao](https://github.com/mohayonao/get-float-time-domain-data) (needed for Safari)
 
 I also heavily used [MilkyTracker](https://milkytracker.titandemo.org/) and [webaudio-mod-player](https://mod.haxor.fi/) - which plays lot of module formats with high fidelity - to track down some timing bugs.
-
-# Module files copyright
-
-ModPlayer-js includes the following module files:
-
- - agony.mod: music from Amiga game [Agony](https://www.youtube.com/watch?v=iRzIpghJeec) by [Tim Wright](https://twitter.com/CoLDSToRAGE)
- - all_that_she_wants.mod: Ace of Base remix from 1993 by Crossair
- - bigtime.mod: Björk Big Time Sensuality remix from 1994 by ISO from Axis group, appeared in the [Big Time Sensuality demo](https://www.youtube.com/watch?v=Y-2xUXk5F2w)
- - cannonfodder.mod: music from [Cannon Fodder](https://www.youtube.com/watch?v=PiYuq6Ac3a0) Amiga game by [John Hare](https://twitter.com/johnhare) / [Richard Joseph](https://en.wikipedia.org/wiki/Richard_Joseph)
- - desert_strike.mod: music from [Desert Strike](https://www.youtube.com/watch?v=hcJaph0D7UM) Amiga game by Jason Whitley
- - LotusII.mod: music from [Lotus II](https://www.youtube.com/watch?v=vETonlaTZ4c) game by [Barry Leitch](https://en.wikipedia.org/wiki/Barry_Leitch)
- - projectx.mod: music from [Project-X](https://www.youtube.com/watch?v=gjq-ONi3dZE) Amiga game by [Allister Brimble](https://twitter.com/allisterbrimble)
- - silkworm.mod: music from [Silkworm](https://www.youtube.com/watch?v=4wNidIucUuc) Amiga game by [Barry Leitch](https://en.wikipedia.org/wiki/Barry_Leitch)
 
 # Module background
 
@@ -107,3 +94,15 @@ Then comes the patterns data: first the list of positions and then each patterns
 Last but not least, sample data is stored, uncompressed in LPCM 8bit format.
 
 More information can be found in the [original specs](https://github.com/cmatsuoka/tracker-history/blob/master/reference/amiga/soundtracker/Soundtracker_v1-v9/Soundtracker_v2.doc) file (which was written in 1988: ouch!).
+
+# Module files copyright
+
+No file is hosted in GitHub, all modules are downloaded from [The Mod Archive](https://modarchive.org) and are licensed under the [Mod Archive Distribution License](https://modarchive.org/index.php?terms-upload)
+
+ - [agony.mod](https://api.modarchive.org/downloads.php?moduleid=124303#agony_intro.mod): music from Amiga game [Agony](https://www.youtube.com/watch?v=iRzIpghJeec) by [Tim Wright](https://twitter.com/CoLDSToRAGE)
+ - [bigtime.mod](https://api.modarchive.org/downloads.php?moduleid=98051#big_time_sensuality.mod): Björk Big Time Sensuality remix from 1994 by ISO from Axis group, appeared in the [Big Time Sensuality demo](https://www.youtube.com/watch?v=Y-2xUXk5F2w)
+ - [cannonfodder.mod](https://api.modarchive.org/downloads.php?moduleid=34568#CANNONFO.MOD): music from [Cannon Fodder](https://www.youtube.com/watch?v=PiYuq6Ac3a0) Amiga game by [John Hare](https://twitter.com/johnhare) / [Richard Joseph](https://en.wikipedia.org/wiki/Richard_Joseph)
+ - [desert_strike.mod](https://api.modarchive.org/downloads.php?moduleid=68835#desert_strike.mod): music from [Desert Strike](https://www.youtube.com/watch?v=hcJaph0D7UM) Amiga game by Jason Whitley
+ - [LotusII.mod](https://api.modarchive.org/downloads.php?moduleid=87180#lotus2-title.mod): music from [Lotus II](https://www.youtube.com/watch?v=vETonlaTZ4c) game by [Barry Leitch](https://en.wikipedia.org/wiki/Barry_Leitch)
+ - [projectx.mod](https://api.modarchive.org/downloads.php?moduleid=56660#projectx.mod): music from [Project-X](https://www.youtube.com/watch?v=gjq-ONi3dZE) Amiga game by [Allister Brimble](https://twitter.com/allisterbrimble)
+ - [silkworm.mod](https://api.modarchive.org/downloads.php?moduleid=83115#silkwormtitle.mod): music from [Silkworm](https://www.youtube.com/watch?v=4wNidIucUuc) Amiga game by [Barry Leitch](https://en.wikipedia.org/wiki/Barry_Leitch)
