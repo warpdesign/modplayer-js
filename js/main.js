@@ -1,16 +1,29 @@
 var moduleList = [
-    { file: 'agony.mod', author: 'Tim Wright' },
-    { file: 'all_that_she_wants.mod', author: 'Crossair' },
-    { file: 'bigtime.mod', author: 'ISO/Axis Group' },
-    { file: 'cannonfodder.mod', author: 'John Hare' },
-    { file: 'desert_strike.mod', author: 'Jason Whitley' },
-    { file: 'LotusII.mod', author: 'Barry Leitch' },
-    { file: 'projectx.mod', author: 'Allister Brimble' },
-    { file: 'silkworm.mod', author: 'Barry Leitch' },
-    { file: 'tax_haven_dry_hump.mod', author: 'Barry Leitch' },
-    { file: 'h0ffman_-_drop_the_panic.mod', author: 'toto' },
-    { file: 'slinger.mod', author: 'toto' },
-    { file: 'variations.mod', author: 'toto' }
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=91286#faggots_universe.mod', author: 'Deelite' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=168739#neurodancer_-_quasar.mod', author: 'Neurodancer' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=183672#tax_haven_dry_hump.mod', author: 'Curt Cool' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=182057#h0ffman_-_drop_the_panic.mod', author: 'h0ffman' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=168122#prodigy_-_downtown.mod', author: 'prodigy of oops' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=172266#hoffman_-_the_hunter.mod', author: 'h0ffman' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=65280#variations.mod', author: 'jogeir-liljedahl' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=166686#wiklund_-_bonfire.mod', author: 'Wiklund' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=55058#pinball_illusions.mod', author: 'Olof Gustafsson' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=167668#vinnie_-_sweet_dreams.mod', author: 'vinnie/spaceballs' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=172271#subi-king_of_boggle.mod', author: 'Subi/DESiRE' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=171416#bass-1107.mod', author: 'Noiseless (cm/ao)' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=168110#punnik_-_drum_bass.mod', author: 'punnik' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=171616#dan_-_childs_philozophy.mod', author: 'dan / picco' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=119303#boesendorfer_p_s_s.mod', author: 'romeoknight' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=170637#ghost_in_the_cli.mod', author: 'h0ffman' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=158057#alf_-_no-mercy.mod', author: 'alf/vtl' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=105709#trans_atlantic.mod', author: 'Lizardking'},
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=124303#agony_intro.mod', author: 'Tim Wright' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=98051#big_time_sensuality.mod', author: 'ISO/Axis Group' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=34568#CANNONFO.MOD', author: 'John Hare' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=68835#desert_strike.mod', author: 'Jason Whitley' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=87180#lotus2-title.mod', author: 'Barry Leitch' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=56660#projectx.mod', author: 'Allister Brimble' },
+    { file: 'https://api.modarchive.org/downloads.php?moduleid=83115#silkwormtitle.mod', author: 'Barry Leitch' }
 ],
     selectedMod = 0,
     prefix = 'audio/',
@@ -24,7 +37,10 @@ window.onload = function () {
     toast = new Toast('info-snackbar');
 
     document.addEventListener('moduleLoaded', (event) => {
-        toast.show(`Module loaded: ${moduleList[selectedMod].file}`);
+        const split = moduleList[selectedMod].file.split('#'),
+            name = split.length > 1 && split[1] || split[0];
+
+        toast.show(`Module loaded: ${name}`);
 
         const samples = event.data.samples;
         let str = '';
@@ -37,7 +53,7 @@ window.onload = function () {
         document.querySelector('.sample-list').innerHTML = str;
 
         document.querySelector('.song-title').innerText = event.data.title;
-        document.querySelector('.title').innerText = moduleList[selectedMod].file;
+        document.querySelector('.title').innerText = name;
         document.querySelector('.author').innerText = moduleList[selectedMod].author;
         document.querySelector('.song-length').innerText = event.data.length;
         document.querySelector('.song-samples').innerText = event.data.samples.length;
@@ -65,7 +81,9 @@ window.onload = function () {
         if (i === selectedMod) {
             options += ' selected';
         }
-        options += `">${module.file}</a>`;
+        const split = module.file.split('#'),
+            name = split.length > 1 && split[1] || split[0];
+        options += `">${name}</a>`;
     });
 
     modNav.innerHTML = options;
@@ -175,7 +193,7 @@ function loadModule(moduleIndex, hideDrawer = true) {
         document.querySelector('a.mdl-navigation__link.selected').classList.toggle('selected');
         document.querySelector(`a.mdl-navigation__link.mod_${moduleIndex}`).classList.add('selected');
 
-        ModPlayer.loadModule(prefix + moduleName)
+        ModPlayer.loadModule(moduleName.match(/^http/) ? moduleName : prefix + moduleName)
             .catch(err => {
                 toast.show(`Error loading module: ${err}`);
             });

@@ -1,4 +1,3 @@
-console.log('hey2');
 const BinUtils = {
     readAscii(buffer, maxLength, offset = 0) {
         const uint8buf = new Uint8Array(buffer);
@@ -356,7 +355,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
 
                 this.decodeRow();
 
-                console.log('** next row !', this.row.toString(16).padStart(2, "0"));
+                // console.log('** next row !', this.row.toString(16).padStart(2, "0"));
             }
         }
     }
