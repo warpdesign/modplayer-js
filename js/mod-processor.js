@@ -284,10 +284,11 @@ class PTModuleProcessor extends AudioWorkletProcessor{
             this.tick();
             for (let chan = 0; chan < this.channels.length; ++chan) {
                 const channel = this.channels[chan];
-                const buffer = this.audioWorkletSupport ? outputs[chan][0] : outputs[0][outputChannel];
                 // select left/right output depending on module channel:
                 // voices 0,3 go to left channel, 1,2 go to right channel
                 outputChannel = outputChannel ^ (chan & 1);
+
+                const buffer = this.audioWorkletSupport ? outputs[chan][0] : outputs[0][outputChannel];
 
                 // TODO: check that no effect can be applied without a note
                 // otherwise that will have to be moved outside this loop
