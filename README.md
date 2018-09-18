@@ -42,6 +42,14 @@ ModPlayer JS makes use of the following piece of software:
 
 I also heavily used [MilkyTracker](https://milkytracker.titandemo.org/) and [webaudio-mod-player](https://mod.haxor.fi/) - which plays lot of module formats with high fidelity - to track down some timing bugs.
 
+# Building modplayer-js
+
+modplayer-js only needs a webserver, which can be installed by typing `npm install` and then `http-server`.
+
+If you want to use modplayer-js on an Xbox One, you'll also need to type `npm run build`: this will generate an ES5 version of the `mod-processor.js` file.
+
+This is because for some unknown reason, on Xbox One Edge, the audioworklet polyfill refuses to execute ES6 code.
+
 # Module background
 
 Modules are like MIDI files but with custom sound samples instead of builtin synth files.

@@ -46,7 +46,6 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         // pattern data always starts at offset 1084
         super();
         this.port.onmessage = this.handleMessage.bind(this);
-        this.patternOffset = 1084;
         this.patternLength = 1024;
     }
 
@@ -195,7 +194,8 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 vspeed: 0,
                 vpos: 0,
                 loopInitiated: false,
-                id: i
+                id: i,
+                cmd: 0
             };
             if (!this.channels[i]) {
                 this.channels[i] = channel;
@@ -240,6 +240,12 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         // but we stick to good old ST/NT modules
         const str = BinUtils.readAscii(this.buffer, 4, 1080);
         this.maxSamples = str.match("M.K.") ? 31 : 15;
+
+        if (this.maxSamples === 15) {
+            this.patternOffset = 1080 - 480;
+        } else {
+            this.patternOffset = 1084;
+        }
     }
 
     /**
@@ -278,10 +284,11 @@ class PTModuleProcessor extends AudioWorkletProcessor{
             this.tick();
             for (let chan = 0; chan < this.channels.length; ++chan) {
                 const channel = this.channels[chan];
-                const buffer = this.audioWorkletSupport ? outputs[chan][0] : outputs[0][outputChannel];
                 // select left/right output depending on module channel:
                 // voices 0,3 go to left channel, 1,2 go to right channel
                 outputChannel = outputChannel ^ (chan & 1);
+
+                const buffer = this.audioWorkletSupport ? outputs[chan][0] : outputs[0][outputChannel];
 
                 // TODO: check that no effect can be applied without a note
                 // otherwise that will have to be moved outside this loop
@@ -472,6 +479,10 @@ class PTModuleProcessor extends AudioWorkletProcessor{
             // Existing mod players seem to play a sample only once if repeatLength is set to 2
             if (sample.repeatLength === 2) {
                 sample.repeatLength = 0;
+                // some modules seems to skip the first two bytes for length
+                if (sample.length === 2) {
+                    sample.length = 0;
+                }
             }
 
             if (sample.repeatLength > sample.length) {
@@ -487,7 +498,8 @@ class PTModuleProcessor extends AudioWorkletProcessor{
 
     getPatternData() {
         // pattern data always starts at offset 950
-        const uint8buffer = new Uint8Array(this.buffer, 950);
+        const offset = this.maxSamples === 15 ? 470 : 950;
+        const uint8buffer = new Uint8Array(this.buffer, offset);
         this.songLength = uint8buffer[0];
         let position = 2;
         let max = 0;
@@ -515,7 +527,8 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         for (let i = 0; i < this.samples.length; ++i) {
             const length = this.samples[i].length,
                 data = new Float32Array(length),
-                pcm = new Int8Array(this.buffer, offset, length);
+                maxLength = (offset + length) > this.buffer.byteLength ? this.buffer.byteLength - offset : length,
+                pcm =  new Int8Array(this.buffer, offset, maxLength);
 
             // convert 8bit pcm format to webaudio format
             for (let j = 0; j < length; ++j) {
@@ -524,7 +537,7 @@ class PTModuleProcessor extends AudioWorkletProcessor{
 
             this.samples[i].data = data;
 
-            offset += length;
+            offset += maxLength;
         }
     }
 

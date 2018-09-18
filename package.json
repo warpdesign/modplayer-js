@@ -2,10 +2,9 @@
   "name": "modplayer-js",
   "version": "1.0.0",
   "description": "JavaScript player for SoundTracker/Noisetracker mod files using the webaudio AudioWorklet API.",
-  "main": "js/modplayer.js",
+  "main": "js/main.js",
   "scripts": {
-    "build": "microbundle",
-    "dev": "microbundle watch",
+    "build": "microbundle -i js/mod-processor.js -o dist && cp dist/modplayer-js.js js/mod-processor-es5.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -28,6 +27,7 @@
   },
   "homepage": "https://github.com/warpdesign/modplayer-js#readme",
   "devDependencies": {
+    "http-server": "^0.11.1",
     "microbundle": "^0.6.0"
   }
 }
