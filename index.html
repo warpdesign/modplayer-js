@@ -45,6 +45,19 @@
         .mdl-card__title h2 {
             color: black;
             cursor:pointer;
+            width:95%;
+        }
+
+        .mdl-card__title h2 .title-container{
+            flex-grow:1;
+        }
+
+        .mdl-card__title h2 span.title{
+            display:inline-block;
+            width: 90%;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
         }
 
         .mdl-layout__drawer .mdl-navigation .mdl-navigation__link.selected {
@@ -132,7 +145,7 @@
                 <div class="demo-card-wide mdl-card mdl-shadow--2dp">
                     <div class="mdl-card__title">
                         <canvas width="512" height="128" id="visualizer"></canvas>
-                        <h2 class="mdl-card__title-text" title="Click here to load another module"><div><i class="material-icons">audiotrack</i></div><div><span class="title"></span><br />by&nbsp;<span class="author"></span></div></h2>
+                        <h2 class="mdl-card__title-text" title="Click here to load another module"><div><i class="material-icons">audiotrack</i></div><div class="title-container"><span class="title"></span><br />by&nbsp;<span class="author"></span></div></h2>
                     </div>
                     <div class="mdl-card__supporting-text">
                         <div class="mdl-tabs mdl-js-tabs mdl-js-ripple-effect">
