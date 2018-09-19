@@ -97,7 +97,7 @@ window.onload = function () {
     });
 
     canvas.addEventListener('click', (event) => {
-        const width = canvas.width / 4,
+        const width = canvas.clientWidth / 4,
             channel = Math.floor(event.offsetX / width);
 
         // audioworklet mode shows the four channels
