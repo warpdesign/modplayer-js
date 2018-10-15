@@ -1,5 +1,5 @@
 # modplayer-js
-JavaScript player for SoundTracker/Noisetracker mod files using the webaudio [AudioWorklet](https://developers.google.com/web/updates/2017/12/audio-worklet) API.
+JavaScript player for [SoundTracker](https://en.wikipedia.org/wiki/ProTracker)/Noisetracker mod files using the webaudio [AudioWorklet](https://developers.google.com/web/updates/2017/12/audio-worklet) API.
 
 ![ModPlayer screenshot](./img/screenshot.png)
 
@@ -60,7 +60,7 @@ Instead of playing at a specific rate, a `period` is used during which the same 
 
 To reproduce the original sound the mod creator has to play it at the note which would play it at the same rate as it was encoded.
 
-Soundtracker modules have 4 voices which can be independentaly played with a specific period and volume.
+Soundtracker modules have 4 voices which can be independently played with a specific period and volume.
 
 In addition to the notion of period, there is a speed at which tracks are played which was again close to the Amiga's hardware because it was synced to the monitor's refresh rate: 50hz for PAL and 60hz for NTSC.
 
