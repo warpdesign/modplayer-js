@@ -8,13 +8,27 @@ const ModPlayer = {
     bufferFull: false,
     ready: true,
     loaded: false,
+    canvas: null,
+    ctx: null,
+    autoPlay: false,
     isXbox: !!navigator.userAgent.match(/Xbox One/),
     init(options) {
-        this.canvas = options.canvas;
-        this.ctx = this.canvas.getContext('2d');
-        this.audioWorkletSupport = options.audioWorkletSupport;
-        this.canvasWidth = (this.canvas.width) / 4;
-        this.canvasHeight = this.canvas.height;
+        options = options || {};
+
+        if (options.canvas) {
+            this.canvas = options.canvas || null;
+            this.ctx = this.canvas && this.canvas.getContext('2d') || null;
+            if (this.canvas) {
+                this.canvasWidth = (this.canvas.width) / 4;
+                this.canvasHeight = this.canvas.height;
+            }
+        }
+
+        if (typeof options.autoPlay !== 'undefined') {
+            this.autoPlay = options.autoPlay;
+        }
+
+        this.audioWorkletSupport = !!AudioWorkletNode.toString().match(/native code/);
         this.channels = [true, true, true, true];
 
         return this.createContext();
@@ -52,6 +66,25 @@ const ModPlayer = {
         return buffer;
     },
 
+    createAnalyzers() {
+        // create four analysers and connect each worklet's input to one
+        this.analysers = new Array();
+
+        for (let i = 0; i < numAnalysers; ++i) {
+            const analyser = this.context.createAnalyser();
+            analyser.fftSize = 256;// Math.pow(2, 11);
+            analyser.minDecibels = -90;
+            analyser.maxDecibels = -10;
+            analyser.smoothingTimeConstant = 0.65;
+            if (this.audioWorkletSupport) {
+                this.workletNode.connect(analyser, i, 0);
+            } else {
+                this.splitter.connect(analyser, i);
+            }
+            this.analysers.push(analyser);
+        }
+    },
+
     createContext() {
         console.log('Creating audio context...');
         this.context = new (window.AudioContext || window.webkitAudioContext)();
@@ -61,7 +94,7 @@ const ModPlayer = {
         const soundProcessor = this.isXbox && 'mod-processor-es5.js' || 'mod-processor.js';
 
         return this.context.audioWorklet.addModule(`js/${soundProcessor}`).then(() => {
-            const numAnalysers = this.audioWorkletSupport && 4 || 2;
+            const numAnalysers = this.canvas ? (this.audioWorkletSupport && 4 || 2) : 0;
 
             // apply a filter
             this.filterNode = this.context.createBiquadFilter();
@@ -75,12 +108,13 @@ const ModPlayer = {
                 numberOfOutputs: 4
             });
 
-            if (!this.audioWorkletSupport) {
+            if (!this.audioWorkletSupport && this.canvas) {
                 this.splitter = this.context.createChannelSplitter(numAnalysers);
                 this.filterNode.connect(this.splitter);
             }
 
             this.workletNode.port.onmessage = this.handleMessage.bind(this);
+
             this.postMessage({
                 message: 'init',
                 mixingRate: this.mixingRate,
@@ -88,21 +122,8 @@ const ModPlayer = {
             });
             this.workletNode.port.start();
 
-            // create four analysers and connect each worklet's input to one
-            this.analysers = new Array();
-
-            for (let i = 0; i < numAnalysers; ++i) {
-                const analyser = this.context.createAnalyser();
-                analyser.fftSize = 256;// Math.pow(2, 11);
-                analyser.minDecibels = -90;
-                analyser.maxDecibels = -10;
-                analyser.smoothingTimeConstant = 0.65;
-                if (this.audioWorkletSupport) {
-                    this.workletNode.connect(analyser, i, 0);
-                } else {
-                    this.splitter.connect(analyser, i);
-                }
-                this.analysers.push(analyser);
+            if (this.canvas) {
+                this.createAnalyzers();
             }
 
             if (this.audioWorkletSupport) {
@@ -144,8 +165,11 @@ const ModPlayer = {
                 event.data = message.data.data;
                 event.data.wasPlaying = this.wasPlaying;
                 document.dispatchEvent(event);
-                if (!this.playing) {
+                if (!this.playing && this.canvas) {
                     this.renderScope();
+                }
+                if (this.autoPlay) {
+                    this.play();
                 }
                 break;
 
@@ -175,7 +199,9 @@ const ModPlayer = {
 
             this.sendPlayingStatus();
 
-            this.render();
+            if (this.canvas) {
+                this.render();
+            }
         } else {
             console.log('No module loaded');
         }
@@ -214,7 +240,7 @@ const ModPlayer = {
 
         this.channels = channels;
 
-        if (!this.playing) {
+        if (!this.playing && this.canvas) {
             this.renderScope();
         }
     },
