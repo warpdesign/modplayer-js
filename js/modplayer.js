@@ -161,8 +161,9 @@ const ModPlayer = {
 
     play() {
         if (this.loaded) {
-            // probably an iOS device: attempt to unlock webaudio
-            if (this.context.state === 'suspended' && 'ontouchstart' in window) {
+            // on Safari macOS/iOS, the audioContext is suspended if it's not created
+            // in the event handler of a user action: we attempt to resume it.
+            if (this.context.state === 'suspended') {
                 this.context.resume();
             }
 
