@@ -186,7 +186,7 @@ const ModPlayer = {
     play() {
         if (this.loaded) {
             // probably an iOS device: attempt to unlock webaudio
-            if (this.context.state === 'suspended' && 'ontouchstart' in window) {
+            if (this.context.state === 'suspended') {
                 this.context.resume();
             }
 
