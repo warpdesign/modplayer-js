@@ -1,7 +1,7 @@
 # modplayer-js
 JavaScript player for [SoundTracker](https://en.wikipedia.org/wiki/ProTracker)/Noisetracker mod files using the webaudio [AudioWorklet](https://developers.google.com/web/updates/2017/12/audio-worklet) API.
 
-[![ModPlayer screenshot](./img/screenshot.png)](https://github.com/warpdesign/modplayer-js)
+[![ModPlayer screenshot](./img/screenshot.png)](https://warpdesign.github.io/modplayer-js/)
 
 For a demo, head over [here](https://warpdesign.github.io/modplayer-js/).
 
