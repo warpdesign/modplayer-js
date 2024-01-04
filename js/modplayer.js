@@ -106,7 +106,7 @@ const ModPlayer = {
             }
 
             if (this.audioWorkletSupport) {
-                this.merger = this.context.createChannelMerger(4);
+                this.merger = this.context.createChannelMerger(2);
 
                 // merge the channel 0+3 in left channel, 1+2 in right channel
                 this.workletNode.connect(this.merger, 0, 0);
