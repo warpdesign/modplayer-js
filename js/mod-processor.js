@@ -404,9 +404,6 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 cmdData = data[3 + offset];
             const channel = this.channels[i];
 
-            // if (channel.id === 2 && this.row > 3)
-            //     debugger;
-
             channel.delay = 0;
 
             // check for command
@@ -833,10 +830,5 @@ const Effects = {
                 Module.calcTickSpeed();
             }
         }
-    },
-    0xFFF() {
-
     }
 }
-
-console.time('')
