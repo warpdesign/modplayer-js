@@ -36,11 +36,15 @@ window.onload = function () {
 
     toast = new Toast('info-snackbar');
 
-    document.addEventListener('moduleLoaded', (event) => {
-        const split = moduleList[selectedMod].file.split('#'),
-            name = split.length > 1 && split[1] || split[0];
+    document.addEventListener('moduleLoadError', () => {
+        toast.show(`Error loading module: are you sure this is a Sound Tracker module file?`);
+        removeLoader()
+    })
 
-        toast.show(`Module loaded: ${name}`);
+    document.addEventListener('moduleLoaded', (event) => {
+        const name = event.data.title || "No Title"
+
+        toast.show(`Module loaded: ${event.data.title || "No Name"}`);
 
         const samples = event.data.samples;
         let str = '';
@@ -54,17 +58,16 @@ window.onload = function () {
 
         document.querySelector('.song-title').innerText = event.data.title;
         document.querySelector('.title').innerText = name;
-        document.querySelector('.author').innerText = moduleList[selectedMod].author;
+        document.querySelector('.author').innerText = moduleList[selectedMod]?.author || 'Unknown Author';
         document.querySelector('.song-length').innerText = event.data.length;
         document.querySelector('.song-samples').innerText = event.data.samples.length;
         document.querySelector('.song-positions').innerText = event.data.positions;
         document.querySelector('.song-patterns').innerText = event.data.patterns;
 
-        document.querySelector('#loader').classList.remove('is-active');
+        document.querySelector('a.mdl-navigation__link.selected')?.classList.remove('selected');
+        typeof selectedMod === 'number' && document.querySelector(`a.mdl-navigation__link.mod_${selectedMod}`).classList.add('selected');
 
-        document.querySelectorAll('.controls button').forEach((button) => {
-            button.style.display = 'inline-block';
-        });
+        removeLoader();
 
         togglePlayButton();
 
@@ -117,37 +120,6 @@ window.onload = function () {
         ModPlayer.setPlayingChannels(channelsPlaying);
     });
 
-    // function drawBars(amplitudeArray) {
-    //     var bufferLength = amplitudeArray.length;
-    //     ctx.fillStyle = 'rgb(0, 0, 0)';
-    //     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-    //     var barWidth = (canvasWidth / bufferLength) * 2.5 - 1;
-    //     barWidth *= 2;
-    //     var barHeight;
-    //     var x = 0;
-
-    //     for (var i = 0; i < bufferLength; i++) {
-    //         barHeight = amplitudeArray[i];
-
-    //         ctx.fillStyle = 'rgb(' + (barHeight + 100) + ',50,50)';
-    //         ctx.fillRect(x, canvasHeight - barHeight / 2, barWidth, barHeight / 2);
-
-    //         x += barWidth;
-    //     }
-    // }
-
-    // function drawOscillo(amplitudeArray) {
-    //     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-
-    //     for (var i = 0; i < amplitudeArray.length; i++) {
-    //         var value = amplitudeArray[i] / 256;
-    //         var y = canvasHeight - (canvasHeight * value) - 1;
-    //         ctx.fillStyle = '#000000';
-    //         ctx.fillRect(i, y, 1, 1);
-    //     }
-    // }
-
     ModPlayer.init({
         canvas: canvas,
         audioWorkletSupport: audioWorkletSupport
@@ -158,8 +130,17 @@ window.onload = function () {
     });
 }
 
+function removeLoader() {
+    document.querySelector('#loader').classList.remove('is-active');
+
+    document.querySelectorAll('.controls button').forEach((button) => {
+        button.style.display = 'inline-block';
+    });
+}
+
 function togglePlayButton() {
     document.querySelector('button.play i').innerText = ModPlayer.playing && 'pause' || 'play_arrow';
+    document.querySelector('button.play span').innerText = ModPlayer.playing && 'Pause' || 'Play';
 }
 
 function togglePlay() {
@@ -172,12 +153,17 @@ function stop() {
     togglePlayButton();
 }
 
-function loadModule(moduleIndex, hideDrawer = true) {
-    var moduleName = moduleList[moduleIndex].file;
+function loadLocalFile(file) {
+    console.log("should load local file", file);
+    loadModule(file, false)
+}
 
-    selectedMod = moduleIndex;
+function loadModule(module, hideDrawer = true) {
+    var moduleName = typeof module === 'number' && moduleList[module].file;
 
-    if (ModPlayer.ready && moduleName) {
+    selectedMod = module;
+
+    if (ModPlayer.ready && (moduleName || module)) {
         // I guess that's the best way to programmatically hide the drawer
         // since MDL does not provide any API to do that
         if (hideDrawer) {
@@ -190,10 +176,12 @@ function loadModule(moduleIndex, hideDrawer = true) {
             button.style.display = 'none';
         });
 
-        document.querySelector('a.mdl-navigation__link.selected').classList.toggle('selected');
-        document.querySelector(`a.mdl-navigation__link.mod_${moduleIndex}`).classList.add('selected');
+        const file = moduleName ?
+            (moduleName.match(/^http/) ? moduleName : prefix + moduleName)
+            :
+            module;
 
-        ModPlayer.loadModule(moduleName.match(/^http/) ? moduleName : prefix + moduleName)
+        ModPlayer.loadModule(file)
             .catch(err => {
                 toast.show(`Error loading module: ${err}`);
             });

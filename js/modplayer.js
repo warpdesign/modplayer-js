@@ -20,7 +20,7 @@ const ModPlayer = {
         return this.createContext();
     },
 
-    async loadModule(url) {
+    async loadModule(module) {
         if (!this.ready) {
             return;
         } else {
@@ -36,7 +36,7 @@ const ModPlayer = {
             this.createContext();
         }
 
-        const buffer = await this.loadBinary(url);
+        const buffer = typeof module === 'string' ? await this.loadBinaryFromURL(module) : await this.loadBinaryFromLocalFile(module);
         this.postMessage({
             message: 'loadModule',
             buffer: buffer
@@ -45,11 +45,24 @@ const ModPlayer = {
         this.ready = true;
     },
 
-    async loadBinary(url) {
+    async loadBinaryFromURL(url) {
         const response = await betterFetch(url);
         const buffer = await response.arrayBuffer();
 
         return buffer;
+    },
+
+    async loadBinaryFromLocalFile(file) {
+        return new Promise((resolve, reject) => {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                resolve(e.target.result);
+            };
+            reader.onerror = function(e) {
+                reject('Error : ' + e.type);;
+            };
+            reader.readAsArrayBuffer(file);
+        });
     },
 
     createContext() {
@@ -138,7 +151,7 @@ const ModPlayer = {
 
     handleMessage(message) {
         switch (message.data.message) {
-            case 'moduleLoaded':
+            case 'moduleLoaded': {
                 this.loaded = true;
                 const event = new Event('moduleLoaded');
                 event.data = message.data.data;
@@ -147,11 +160,18 @@ const ModPlayer = {
                 if (!this.playing) {
                     this.renderScope();
                 }
-                break;
+            }
+            break;
 
             case 'toggleLowPass':
                 this.setLowPass(message.data.data.activate);
                 break;
+
+            default: {
+                this.loaded = true;
+                const event = new Event(message.data.message);
+                document.dispatchEvent(event);
+            }
         }
     },
 
@@ -308,8 +328,6 @@ const ModPlayer = {
             this.ctx.strokeStyle = style;
             this.ctx.fillStyle = style;
 
-            // this.ctx.beginPath();
-
             while (timeData[risingEdge] > 0 &&
                 risingEdge <= this.canvasWidth &&
                 risingEdge < timeData.length) {
@@ -329,12 +347,8 @@ const ModPlayer = {
 
             for (let x = risingEdge; x < timeData.length && x - risingEdge < this.canvasWidth; x++) {
                 const y = this.canvasHeight - (((timeData[x] + 1) / 2) * this.canvasHeight);
-                // this.ctx.moveTo(x - risingEdge + i * this.canvasWidth, y-1);
-                // this.ctx.lineTo(x - risingEdge + i * this.canvasWidth, y);
                 this.ctx.fillRect(x - risingEdge + pos * this.canvasWidth, y, 1, 1);
             }
-
-            // this.ctx.stroke();
         });
     }
 }

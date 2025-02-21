@@ -205,10 +205,25 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         }
     }
 
+    isModule(buffer) {
+        // Very basic mod file detection, maybe we could check for M.K signature
+        // at offset 1080 instead
+        return buffer.byteLength > 20 && new DataView(buffer).getUint8(0x13) === 0;
+    }
+
     prepareModule(buffer) {
         console.log('Decoding module data...');
+
+        if (!this.isModule(buffer)) {
+            this.postMessage({
+                message: 'moduleLoadError',
+            })
+            return
+        }
+
         this.ready = false;
         this.init();
+
         this.buffer = buffer;
         this.name = BinUtils.readAscii(this.buffer, 20);
 
@@ -361,8 +376,6 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 }
 
                 this.decodeRow();
-
-                // console.log('** next row !', this.row.toString(16).padStart(2, "0"));
             }
         }
     }
@@ -372,7 +385,6 @@ class PTModuleProcessor extends AudioWorkletProcessor{
 
         // Loop ? Use loop parameter
         if (this.position > this.positions.length - 1) {
-            debugger;
             console.log('Warning: last position reached, going back to 0');
             this.position = 0;
         }
@@ -382,8 +394,6 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         }
 
         this.pattern = this.positions[this.position];
-
-        console.log('** position', this.position, 'pattern:', this.pattern);
     }
 
     decodeRow() {
@@ -448,7 +458,6 @@ class PTModuleProcessor extends AudioWorkletProcessor{
         try {
             Effects[channel.cmd](this, channel);
         } catch (err) {
-            debugger;
             console.warn(`effect not implemented: ${channel.cmd.toString(16).padStart(2, '0')}/${channel.data.toString(16).padStart(2, '0')}`);
         }
     }
@@ -472,9 +481,9 @@ class PTModuleProcessor extends AudioWorkletProcessor{
                 data: null
             };
 
-            if (sample.finetune) {
-                debugger;
-            }
+            // if (sample.finetune) {
+            //     debugger;
+            // }
 
             // Existing mod players seem to play a sample only once if repeatLength is set to 2
             if (sample.repeatLength === 2) {
@@ -730,7 +739,6 @@ const Effects = {
      * Set Vibrato waveform + retrigger
      */
     0xE4(Module, channel) {
-        debugger;
         if (!Module.ticks) {
             // channel.vform = //
         }
